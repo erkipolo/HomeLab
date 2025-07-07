@@ -3,3 +3,19 @@ tee -a /etc/apt/apt.conf <<EOF
 acquire::https::proxy "http://localhost:3128/";
 acquire::http::proxy  "http://localhost:3128/";
 EOF
+
+# Borramos la cache
+apt clean
+
+# Borramos la cache de archivos
+apt autoclean
+
+# Actualizamos la cache
+apt update
+
+# Actualizamos el sistema
+apt -yq dist-upgrade
+
+# Removemos los paquetes huerfanos de el sistema
+apt -yq --purge autoremove
+

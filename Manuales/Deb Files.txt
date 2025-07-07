@@ -1,0 +1,7 @@
+# Microsoft Edge
+wget "https://packages.microsoft.com/repos/edge/pool/main/m/microsoft-edge-stable/microsoft-edge-stable_128.0.2739.79-1_amd64.deb"
+
+# Messenger de Whatsapp
+wget "https://zerkc.gitlab.io/whatsdesk/whatsdesk_0.3.9_amd64.deb"
+
+
