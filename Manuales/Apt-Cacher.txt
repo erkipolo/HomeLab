@@ -1,0 +1,17 @@
+apt -yq install apt-cacher
+
+tee /etc/apt-cacher/apt-cacher.conf <<EOF
+cache_dir = /var/cache/apt-cacher
+log_dir = /var/log/apt-cacher
+daemon_port = 3142
+group = www-data
+user = www-data
+daemon_addr = localhost, 0.0.0.0
+http_proxy = 192.168.0.1:3128
+use_proxy = 1
+allowed_hosts = *
+EOF
+
+systemctl restart apt-cacher
+
+systemctl status apt-cacher
