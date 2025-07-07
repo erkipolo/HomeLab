@@ -1,0 +1,5 @@
+# TAR.BZ2
+apt -yq install tar bz2
+
+# Uncompress
+tar -xjvf archivo.tar.bz2 -C /archivo/carpeta/
