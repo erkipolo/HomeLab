@@ -1,0 +1,16 @@
+# Instalación del cortafuegos Ufw
+apt -yq install ufw
+
+# Configuración mínima recomendada
+ufw default deny incoming
+ufw default deny routed
+ufw default allow outgoing
+
+# Permitir el acceso al SSH (hazlo antes de habilitarlo)
+ufw allow in from 0.0.0.0 proto tcp port 22
+
+# Habilitando el cortafuegos
+ufw enable
+
+# Mostrar las reglas implementadas
+  ufw status verbose

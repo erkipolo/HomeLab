@@ -1,5 +1,10 @@
+# Servicio que se emplea para cachear los
+# paquetes que se instalan en los ordenadores
+
+# Instalamos la aplicación
 apt -yq install apt-cacher
 
+# C0nfiguramos el servicio
 tee /etc/apt-cacher/apt-cacher.conf <<EOF
 cache_dir = /var/cache/apt-cacher
 log_dir = /var/log/apt-cacher
@@ -12,6 +17,8 @@ use_proxy = 1
 allowed_hosts = *
 EOF
 
+# Reiniciamos el servicio
 systemctl restart apt-cacher
 
+# Chequeamos el estado de el servicio
 systemctl status apt-cacher

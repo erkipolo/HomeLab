@@ -1,0 +1,11 @@
+# Asegurar la instalación del servidor de MariaDB
+mysql_secure_installation
+  Enter current password for root (enter for none):
+  Switch to unix_socket authentication [Y/n] Y
+  Change the root password? [Y/n] Y
+    New password: 
+    Re-enter new password:
+  Remove anonymous users? [Y/n] Y
+  Disallow root login remotely? [Y/n] Y
+  Remove test database and access to it? [Y/n] Y
+  Reload privilege tables now? [Y/n] Y

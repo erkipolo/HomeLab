@@ -1,0 +1,13 @@
+# Instalar soporte para archivos RAR
+apt -yq install rar unrar
+
+# Comprimir archivos
+rar -a archivo.rar /carpeta/archivos
+
+# Descomprimir archivos
+rar -x archivo.rar
+
+# Descomprimir archivos con contraseña
+for i in *.rar; do \
+  unrar e -p"Contraseña" "$i"; \
+done

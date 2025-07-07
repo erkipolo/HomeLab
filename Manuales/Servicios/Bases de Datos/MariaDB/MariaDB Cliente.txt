@@ -1,0 +1,20 @@
+# Instalar cliente de MariaDB
+apt -yq install mariadb-client
+
+# Acceder a un servidor de MariaDB
+mysql -h localhost -u username -p
+
+# Ver las bases de datos
+mariadb[]> SHOW DATABASES;
+
+# Usar una base de datos
+mariadb[]> USE userdata;
+
+# Ver las tablas de una base de datos
+mariadb[]> SHOW TABLES;
+
+# Ver los usuarios
+mariadb[]> SELECT user,host,password_expired FROM mysql.user;
+
+# Eliminar un usuario
+mariadb[]> DROP USER 'username'@'localhost';
