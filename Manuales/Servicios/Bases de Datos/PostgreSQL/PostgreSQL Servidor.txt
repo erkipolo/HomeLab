@@ -1,7 +1,80 @@
-# salvar una bases de datos via SSH
+# Instalar PostgreSQL
+apt -yq install postgresql postgresql-contrib sudo
+
+# Como saber donde esta el archivo de configuracion
+sudo -u postgres psql -c "SHOW config_file;"
+
+# Crear un usuario
+sudo -u postgres psql -c "CREATE USER username WITH ENCRYPTED PASSWORD 'userpass';"
+
+# Crear un usuario de forma interactiva
+sudo -u postgres createuser --interactive
+  Enter name of role to add: username
+  Shall the new role be a superuser? (y/n) n
+  Shall the new role be allowed to create databases? (y/n) n
+  Shall the new role be allowed to create more new roles? (y/n) n
+
+# Crear un usuario administrador
+sudo -u postgres createuser --superuser useradmin
+
+# Cambiar la contraseña de un usuario
+ALTER USER username WITH ENCRYPTED PASSWORD 'userpass';
+
+# Cambiar la contraseña del usuario postgres
+ALTER ROLE postgres WITH PASSWORD 'userpass';
+
+# Eliminar un usuario
+DROP USER IF EXISTS username;
+
+# Crear una base de datos
+sudo -u postgres psql -c "CREATE DATABASE userdata WITH ENCODING = 'UTF8' OWNER username;"
+
+# Renombrar base de datos
+ALTER DATABASE userdata RENAME TO userdata_new;
+
+# Borrar una base de datos
+DROP DATABASE 'userdata';
+
+# Otorgar privilegios a un usuario a la base de datos
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE userdata TO username;"
+
+# Habilitar la escucha del servicio por todos los puertos
+sed -i "/#listen_addresses/ i listen_addresses\ \=\ \'\*\'" $(find /etc -name postgresql.conf)
+
+# Permitir el acceso desde el exterior
+tee -a /etc/postgresql/16/main/pg_hba.conf <<EOF
+host    all             all             0.0.0.0/0               md5
+host    all             all             ::/0                    md5
+EOF
+
+# Reiniciar el servicio
+systemctl restart postgresql
+
+# Revisar el estado del servicio
+systemctl status postgresql
+
+# Como acceder a la consola psql
+sudo -u postgres psql
+
+# Respaldar una BD en especifico hacia un archivo con formato SQL
+sudo -u postgres pg_dump userdata > /absolute/route/path/file.sql
+
+# salvar una bases de datos
 pg_dump \
   -U username \
   -d userdata \
   -h localhost \
   -p 5432 \
   -f /path/file.sql
+
+# restaurar una bases de datos via console
+sudo -u postgres psql -U username -d userdata -h localhost -f /absolute/route/path/file.sql
+
+# Respaldar un cluster
+sudo -u postgres pg_dumpall > file.sql
+
+# Restaurar un cluster
+chmod 777 file.sql 
+mv file.sql /var/lib/postgresql/
+sudo -u postgres psql -f /var/lib/postgresql/file.sql
+rm /var/lib/postgresql/file.sql

@@ -13,8 +13,10 @@ psql -U username userdata -h localhost -W
 # mostrar las bases de datos
 \l
 
-# restaurar una bases de datos
+# Conectar con una base de datos
 \c userdata
+
+# restaurar una bases de datos
 \i /absolute/route/path/file.sql
 
 # Salir ===

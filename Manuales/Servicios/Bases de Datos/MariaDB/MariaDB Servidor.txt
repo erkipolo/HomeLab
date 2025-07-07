@@ -1,6 +1,9 @@
 # Instalar MariaDB
 apt -yq install mariadb-server
 
+# Chequeamos la version
+mariadb --version
+
 # Asegurar la instalación del servidor de MariaDB
 mysql_secure_installation
   Enter current password for root (enter for none):
