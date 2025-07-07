@@ -1,11 +1,12 @@
 # Requiere
 - Apache
 - MariaDB
+- Php
 
 # Instalamos el soporte de PHP para Apache y MariaDB
 apt -yq install \
 libapache2-mod-php \
-php php-fpm \
+php-fpm \
 php-mysql
 
 # Habilitamos el modulo de PHP para Apache

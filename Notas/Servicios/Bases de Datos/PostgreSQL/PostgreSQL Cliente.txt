@@ -1,6 +1,9 @@
 # Instalar cliente PostgreSQL
 apt -yq install postgresql-client
 
+# Chequeamos la version de PostgreSQL
+psql --version
+
 # Conectarse con un servidor PostgreSQL
 psql -U username userdata -h localhost -W
 

@@ -1,0 +1,9 @@
+# Instalar Php
+apt -yq install php
+
+# Conocer la version de Php
+php --version
+
+# Mostrar los modulos instalados
+php -m
+

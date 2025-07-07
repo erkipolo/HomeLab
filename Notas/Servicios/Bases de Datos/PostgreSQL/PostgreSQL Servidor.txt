@@ -1,6 +1,9 @@
 # Instalar PostgreSQL
 apt -yq install postgresql postgresql-contrib sudo
 
+# Chequeamos la version de PostgreSQL
+psql --version
+
 # Como saber donde esta el archivo de configuracion
 sudo -u postgres psql -c "SHOW config_file;"
 

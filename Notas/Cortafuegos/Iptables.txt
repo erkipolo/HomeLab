@@ -1,0 +1,73 @@
+# Install
+apt -yq install iptables-persistent ulogd2
+
+# Iptables IPv4 Minimal
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT ! -i lo -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD ! -i lo -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# Permitir el diagnóstico (PING, TRACER) one card
+iptables -A INPUT -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -p udp -m udp --dport 33434:33534 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-port-unreachable
+
+# Permitir el diagnóstico (PING, TRACER) forward card
+iptables -A FORWARD -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A FORWARD -p udp -m udp --dport 33434:33534 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-port-unreachable
+
+# Iptables show Rules
+iptables -nL
+
+# Permitir el acceso Remoto (SSH)
+iptables -A INPUT -p tcp -m tcp --dport 22 -m conntrack --ctstate NEW -j NFLOG --nflog-prefix "INPUT:ACCEPT:"
+iptables -A INPUT -p tcp -m tcp --dport 22 -m conntrack --ctstate NEW -m hashlimit --hashlimit-mode srcip,dstip,dstport --hashlimit-upto 200/minute --hashlimit-burst 100 --hashlimit-name LIM_WEB_RQ --hashlimit-htable-expire 15000 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp --dport 22 -m conntrack --ctstate ESTABLISHED -m connlimit --connlimit-saddr --connlimit-upto 100 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp --dport 22 -j DROP
+
+# Permitir el acceso Web (HTTP, HTTPS)
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 80,443 -m conntrack --ctstate NEW -j NFLOG --nflog-prefix "INPUT:ACCEPT:"
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 80,443 -m conntrack --ctstate NEW -m hashlimit --hashlimit-mode srcip,dstip,dstport --hashlimit-upto 200/minute --hashlimit-burst 100 --hashlimit-name LIM_WEB_RQ --hashlimit-htable-expire 15000 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 80,443 -m conntrack --ctstate ESTABLISHED -m connlimit --connlimit-saddr --connlimit-upto 100 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 80,443 -j DROP
+
+# Permitir el acceso Database (MySQL)
+iptables -A INPUT -p tcp -m tcp --dport 3306 -m conntrack --ctstate NEW -j NFLOG --nflog-prefix "INPUT:ACCEPT:"
+iptables -A INPUT -p tcp -m tcp --dport 3306 -m conntrack --ctstate NEW -m hashlimit --hashlimit-mode srcip,dstip,dstport --hashlimit-upto 200/minute --hashlimit-burst 100 --hashlimit-name LIM_WEB_RQ --hashlimit-htable-expire 15000 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp --dport 3306 -m conntrack --ctstate ESTABLISHED -m connlimit --connlimit-saddr --connlimit-upto 100 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp --dport 3306 -j DROP
+
+# Permitir el acceso Database (PostgreSQL)
+iptables -A INPUT -p tcp -m tcp --dport 5432 -m conntrack --ctstate NEW -j NFLOG --nflog-prefix "INPUT:ACCEPT:"
+iptables -A INPUT -p tcp -m tcp --dport 5432 -m conntrack --ctstate NEW -m hashlimit --hashlimit-mode srcip,dstip,dstport --hashlimit-upto 200/minute --hashlimit-burst 100 --hashlimit-name LIM_WEB_RQ --hashlimit-htable-expire 15000 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp --dport 5432 -m conntrack --ctstate ESTABLISHED -m connlimit --connlimit-saddr --connlimit-upto 100 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp --dport 5432 -j DROP
+
+# Permitir el acceso al Protocolo Transferencia de Archivos (FTP)
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 21,3000:3100 -m conntrack --ctstate NEW -j NFLOG --nflog-prefix "INPUT:ACCEPT:"
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 21,3000:3100 -m conntrack --ctstate NEW -m hashlimit --hashlimit-mode srcip,dstip,dstport --hashlimit-upto 200/minute --hashlimit-burst 100 --hashlimit-name LIM_WEB_RQ --hashlimit-htable-expire 15000 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 21,3000:3100 -m conntrack --ctstate ESTABLISHED -m connlimit --connlimit-saddr --connlimit-upto 100 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 21,3000:3100 -j DROP
+
+# Permitir el acceso al Protocolo de Sincronización de Tiempo (NTP)
+iptables -A INPUT -p udp -m udp --dport 123 -m conntrack --ctstate NEW -j NFLOG --nflog-prefix "INPUT:ACCEPT:"
+iptables -A INPUT -p udp -m udp --dport 123 -m conntrack --ctstate NEW -j ACCEPT
+
+# Salvar Configuraciones IPv4
+iptables-save > /etc/iptables/rules.v4
+
+# Iptables IPv6 Minimal
+ip6tables -P INPUT DROP
+ip6tables -P FORWARD DROP
+ip6tables -P OUTPUT ACCEPT
+ip6tables -A INPUT -i lo -j ACCEPT
+ip6tables -A INPUT ! -i lo -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+ip6tables -A FORWARD ! -i lo -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# Salvar Configuraciones IPv6
+ip6tables-save > /etc/iptables/rules.v6
+
+# Ubicación de las bitácoras
+ls -lh /var/log/ulog/syslogemu.log
+

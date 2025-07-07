@@ -1,9 +1,10 @@
 # Requiere
-- Apache
+- Lighttpd
 - MariaDB
+- Php
 
 # Instalamos el soporte de PHP para lighttpd y MariaDB
-apt -yq install php php-cgi php-mysql
+apt -yq install php-cgi php-mysql
 
 # Habilitamos el modulo de PHP para lighttpd
 lighttpd-enable-mod fastcgi-php

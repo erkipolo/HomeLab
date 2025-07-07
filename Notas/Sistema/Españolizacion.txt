@@ -1,0 +1,6 @@
+# Le indicamos que use el idioma español de España al sistema
+dpkg-reconfigure locales
+  Locales to be generated:
+    [*] es_ES.UTF-8 UTF-8
+  Default locale for the system environment:
+    es_ES.UTF-8
