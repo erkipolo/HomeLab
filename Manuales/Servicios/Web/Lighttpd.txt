@@ -1,0 +1,36 @@
+# Instalar Lighttpd
+apt -yq install Lighttpd
+
+# Habilitamos el módulo que permimte HTTS
+lighty-enable-mod ssl
+
+# Creamos un certificado autofirmado
+openssl req \
+  -new \
+  -newkey rsa:4096 \
+  -x509 \
+  -sha256 \
+  -days 365 \
+  -nodes \
+  -out /etc/ssl/certs/Lighttpd.crt \
+  -keyout /etc/ssl/private/Lighttpd.key
+
+# Concatenamos la llave privada con el certificado
+cat /etc/ssl/private/Lighttpd.key \
+    /etc/ssl/certs/Lighttpd.crt > \
+    /etc/lighttpd/Lighttpd.pem
+
+# Modificamos los permisos
+chmod 0600 /etc/lighttpd/Lighttpd.pem
+
+# Forzamos la redirección a HTTPS
+tee -a /etc/lighttpd/lighttpd.conf <<EOF
+$SERVER["socket"] == ":80" {
+　$HTTP["host"] =~ "(.*)" {
+　　url.redirect = ( "^/(.*)" => "https://%1/$1" )
+　}
+}
+EOF
+
+# Reiniciamos el servicio
+systemctl restart lighttpd

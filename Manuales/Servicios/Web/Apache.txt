@@ -1,0 +1,28 @@
+# Instalar apache
+apt -yq install apache2
+
+# Chequear la versión
+apache2 -v
+
+# Forzamos el uso de HTTPS
+tee /etc/apache2/sites-enabled/000-default.conf <<EOF
+<VirtualHost *:80>
+  RewriteEngine On
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
+</VirtualHost>
+EOF
+
+# habilitamos el modulo de apache que permite la redireccion a HTTPS
+a2enmod rewrite
+
+# Habilitamos el módulo HTTPS
+a2enmod ssl
+
+# Habilitamos el sitio por defecto HTTPS
+a2ensite default-ssl.conf
+
+# Chequeamos la sintaxis de la configuración
+apachectl configtest
+
+# Reiniciamos el servicio
+systemctl restart apache2
