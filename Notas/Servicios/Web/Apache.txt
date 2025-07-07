@@ -27,5 +27,28 @@ a2ensite default-ssl.conf
 # Chequeamos la sintaxis de la configuración
 apachectl configtest
 
+apt -yq install libapache2-mod-evasive
+
+a2enmod evasive
+
+tee /etc/apache2/mods-available/evasive.conf <<EOF
+<IfModule mod_evasive20.c>
+  DOSHashTableSize    3097
+  DOSPageCount        20
+  DOSSiteCount        200
+  DOSPageInterval     1
+  DOSSiteInterval     5
+  DOSBlockingPeriod   3600
+  
+  DOSEmailNotify      someone@domain.tld
+  #DOSSystemCommand    "su - someuser -c '/sbin/...%s...'"
+  DOSLogDir           "/var/log/mod_evasive"
+</IfModule>
+EOF
+
+mkdir /var/log/mod_evasive
+
+chown www-data:www-data /var/log/mod_evasive/
+
 # Reiniciamos el servicio
 systemctl restart apache2

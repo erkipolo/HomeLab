@@ -1,0 +1,348 @@
+-----------------------------------------------------------
+-----------------------------------------------------------
+  TODO LO AQUI MOSTRADO SE REALIZA COMO ROOT
+-----------------------------------------------------------
+-----------------------------------------------------------
+
+
+-----------------------------------------------------------
+-----------------------------------------------------------
+  INSTALACIÓN BASICA DE DJANGO
+-----------------------------------------------------------
+dpkg-reconfigure locales
+
+dpkg-reconfigure tzdata
+
+tee /etc/apt/sources.list <<EOF
+EOF
+
+tee /etc/apt/sources.list.d/debian.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://ftp.debian.org/debian
+Suites: bookworm bookworm-updates
+Components: contrib main non-free non-free-firmware
+EOF
+
+tee /etc/apt/sources.list.d/security.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://security.debian.org/debian-security
+Suites: bookworm-security
+Components: contrib main non-free non-free-firmware
+EOF
+
+apt clean
+
+apt autoclean
+
+apt update
+
+apt -yq dist-upgrade
+
+apt -yq --purge autoremove
+
+update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+
+apt -yq install python3-django
+
+django-admin --version
+-----------------------------------------------------------
+-----------------------------------------------------------
+
+-----------------------------------------------------------
+-----------------------------------------------------------
+  PUBLICACIÓN DE UN PROYECTO DE PRUEBA DE DJANGO CON APACHE
+-----------------------------------------------------------
+apt -yq install apache2
+
+mkdir /var/www/html/testing/
+
+django-admin startproject project /var/www/html/testing/
+
+apt -yq install libapache2-mod-wsgi-py3
+
+a2enmod wsgi
+
+a2dissite 000-default
+
+tee /etc/apache2/sites-available/django.conf <<EOF
+<VirtualHost *:80>
+  ServerName  server125.mitrans.gob.cu
+  ServerAlias testing.mitrans.gob.cu
+  ServerAdmin webmaster@nc.mitrans.gob.cu
+  AddDefaultCharset UTF-8
+  DocumentRoot /var/www/html/testing
+  WSGIPassAuthorization On
+  WSGIProcessGroup project
+  WSGIScriptAlias / /var/www/html/testing/project/wsgi.py
+  WSGIDaemonProcess project home=/var/www/html/testing processes=5 threads=2
+  <Directory /var/www/html/testing/project/>
+    <Files wsgi.py>
+      Options All
+      AllowOverride All
+      Require all granted
+    </Files>
+  </Directory>
+  LogLevel info
+  ErrorLog /error.log
+  CustomLog /access.log combined
+</VirtualHost>
+EOF
+
+a2ensite django.conf
+
+vim.tiny /var/www/html/testing/project/settings.py
+DEBUG = True
+ALLOWED_HOSTS = ['*']
+
+systemctl restart apache2
+-----------------------------------------------------------
+-----------------------------------------------------------
+
+
+-----------------------------------------------------------
+-----------------------------------------------------------
+  AGREGAR SOPORTE DE POSTGRESQL A UN PROYECTO DE DJANGO
+-----------------------------------------------------------
+apt -yq install postgresql postgresql-contrib sudo
+
+sudo -u postgres psql -c "CREATE USER username WITH ENCRYPTED PASSWORD 'userpass';"
+
+sudo -u postgres psql -c "CREATE DATABASE userdata WITH ENCODING = 'UTF8' OWNER username;"
+
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE userdata TO username;"
+
+sed -i "/#listen_addresses/ i listen_addresses\ \=\ \'\*\'" $(find /etc -name postgresql.conf)
+
+systemctl restart postgresql
+
+apt -yq install python3-psycopg2
+
+vim.tiny /var/www/html/testing/project/settings.py
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'userdata',
+        'USER': 'username',
+        'PASSWORD': 'userpass',
+        'HOST': 'localhost',
+        'PORT': 5432,
+    }
+}
+
+reboot
+-----------------------------------------------------------
+-----------------------------------------------------------
+
+
+-----------------------------------------------------------
+-----------------------------------------------------------
+  AGREGAR LIBRERIAS DE PYTHON PARA LA CORRECTA
+        EJECUCIÓN DEL PROYECTO DE DJANGO
+-----------------------------------------------------------
+Nota: Estas son librerias que "NO" mantienen el
+      mismo nombre que en el repositorio de pip
+      (pillow=pil; pytz=pytz-deprecation-shim)
+
+apt -yq install \
+python3-pil \
+python3-pytz-deprecation-shim
+
+Nota: Estas son librerias que mantienen el
+      mismo nombre que en el repositorio de pip
+
+apt -yq install \
+python3-django-js-asset \
+python3-django-classy-tags \
+python3-django-formtools \
+python3-dj-database-url \
+python3-django \
+python3-django-appconf \
+python3-django-axes \
+python3-django-filters \
+python3-django-ipware \
+python3-et-xmlfile \
+python3-future \
+python3-html5lib \
+python3-openpyxl \
+python3-psycopg2 \
+python3-pypdf2 \
+python3-reportlab \
+python3-six \
+python3-sqlparse \
+python3-tzlocal \
+python3-unidecode \
+python3-webencodings \
+python3-xhtml2pdf \
+python3-xlrd \
+python3-xlwt
+-----------------------------------------------------------
+-----------------------------------------------------------
+
+-----------------------------------------------------------
+-----------------------------------------------------------
+# BASIC DJANGO INSTALLATION
+-----------------------------------------------------------
+pct create 301 \
+mitrans-cephfs:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst \
+--cores 2 \
+--hostname server125 \
+--searchdomain mitrans.gob.cu \
+--nameserver 172.30.0.83 \
+--memory 2048 \
+--swap 2048 \
+--net0 name=eth0,ip=172.30.0.85/26,bridge=vmbr7,firewall=1,gw=172.30.0.65 \
+--onboot 1 \
+--rootfs mitrans-ceph:50 \
+--unprivileged 1 \
+--features nesting=1
+
+pct start 301
+
+pct exec 301 -- passwd -l root
+
+pct exec 301 -- dpkg-reconfigure locales
+
+pct exec 301 -- dpkg-reconfigure tzdata
+
+pct exec 301 -- apt -yq --purge autoremove postfix openssh-{server,client}
+
+pct exec 301 -- tee -a /etc/hosts <<EOF
+172.30.0.81 repo-debian.mitrans.gob.cu repo-debian
+EOF
+
+pct exec 301 -- tee /etc/apt/sources.list <<EOF
+EOF
+
+pct exec 301 -- tee /etc/apt/sources.list.d/debian.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://repo-debian.mitrans.gob.cu/debian
+Suites: bookworm bookworm-updates
+Components: contrib main non-free non-free-firmware
+EOF
+
+pct exec 301 -- tee /etc/apt/sources.list.d/security.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://repo-debian.mitrans.gob.cu/debian-security
+Suites: bookworm-security
+Components: contrib main non-free non-free-firmware
+EOF
+
+pct exec 301 -- tee /etc/apt/apt.conf.d/10no-check-valid-until <<EOF
+Acquire::Check-Valid-Until "0";
+EOF
+
+pct exec 301 -- apt clean
+
+pct exec 301 -- apt autoclean
+
+pct exec 301 -- apt update
+
+pct exec 301 -- apt -yq dist-upgrade
+
+pct exec 301 -- apt -yq --purge autoremove
+
+pct exec 301 -- update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+
+pct exec 301 -- apt -yq install python3-django
+
+pct exec 301 -- django-admin --version
+
+pct exec 301 -- apt -yq install apache2
+
+pct exec 301 -- mkdir /var/www/html/testing/
+
+pct exec 301 -- django-admin startproject project /var/www/html/testing/
+
+pct exec 301 -- apt -yq install libapache2-mod-wsgi-py3
+
+pct exec 301 -- a2enmod wsgi
+
+pct exec 301 -- a2dissite 000-default
+
+pct exec 301 -- tee /etc/apache2/sites-available/django.conf <<EOF
+<VirtualHost *:80>
+  ServerName  server125.mitrans.gob.cu
+  ServerAlias testing.mitrans.gob.cu
+  ServerAdmin webmaster@nc.mitrans.gob.cu
+  AddDefaultCharset UTF-8
+  DocumentRoot /var/www/html/testing
+  WSGIPassAuthorization On
+  WSGIProcessGroup project
+  WSGIScriptAlias / /var/www/html/testing/project/wsgi.py
+  WSGIDaemonProcess project home=/var/www/html/testing processes=5 threads=2
+  <Directory /var/www/html/testing/project/>
+    <Files wsgi.py>
+      Options All
+      AllowOverride All
+      Require all granted
+    </Files>
+  </Directory>
+  LogLevel info
+  ErrorLog /error.log
+  CustomLog /access.log combined
+</VirtualHost>
+EOF
+
+pct exec 301 -- a2ensite django.conf
+
+pct exec 301 -- vim.tiny /var/www/html/testing/project/settings.py
+DEBUG = True
+ALLOWED_HOSTS = ['*']
+
+pct exec 301 -- systemctl restart apache2
+-----------------------------------------------------------
+-----------------------------------------------------------
+
+
+-----------------------------------------------------------
+-----------------------------------------------------------
+# ADD POSTGRESQL SUPPORT
+-----------------------------------------------------------
+pct exec 301 -- apt -yq install postgresql postgresql-contrib sudo
+
+pct exec 301 -- sudo -u postgres psql -c "CREATE USER username WITH ENCRYPTED PASSWORD 'userpass';"
+
+pct exec 301 -- sudo -u postgres psql -c "CREATE DATABASE userdata WITH ENCODING = 'UTF8' OWNER username;"
+
+pct exec 301 -- sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE userdata TO username;"
+
+**** No funciona, buscar otra via
+pct exec 301 -- sed -i "/#listen_addresses/ i listen_addresses\ \=\ \'\*\'" $(find /etc -name postgresql.conf)
+
+pct exec 301 -- systemctl restart postgresql
+
+pct exec 301 -- apt -yq install python3-psycopg2
+
+pct exec 301 -- vim.tiny /var/www/html/testing/project/settings.py
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'userdata',
+        'USER': 'username',
+        'PASSWORD': 'userpass',
+        'HOST': 'localhost',
+        'PORT': 5432,
+    }
+}
+
+pct reboot 301
+-----------------------------------------------------------
+-----------------------------------------------------------
+django-admin --version
+
+
+-----------------------------------------------------------
+-----------------------------------------------------------
+
