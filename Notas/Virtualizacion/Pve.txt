@@ -34,6 +34,16 @@ pvenode task list --source all --limit 5
 vim.tiny /etc/pve/nodes/<<nombre_del_nodo>>/{lxc,qemu-server}/VMID.conf
 onboot: 0
 
+# suricata bajo proxmox requiere
+editor /etc/network/interfaces
+auto vmbr1
+iface vmbr1 inet static
+  address 192.168.0.1/24
+  bridge-ports none
+  bridge-stp off
+  bridge-fd 0
+  bridge_ageing 0
+
 # Contenedor
 
 # Crear
