@@ -21,16 +21,16 @@ Components: contrib main non-free non-free-firmware
 EOF
 
 # Repositorio Multimedia
-  tee /etc/apt/sources.list.d/multimedia.sources <<EOF
-  Enabled: yes
-  Types: deb
-  Trusted: yes
-  Languages: es
-  Architectures: amd64
-  Uris: http://www.deb-multimedia.org
-  Suites: stable
-  Components: main non-free
-  EOF
+tee /etc/apt/sources.list.d/multimedia.sources <<EOF
+Enabled: yes
+Types: deb
+Trusted: yes
+Languages: es
+Architectures: amd64
+Uris: http://www.deb-multimedia.org
+Suites: stable
+Components: main non-free
+EOF
 
 # Para agregar el GPG de Multimedia
 apt update
