@@ -1,0 +1,22 @@
+# Instalar cliente PostgreSQL
+apt -yq install postgresql-client
+
+# Conectarse con un servidor PostgreSQL
+psql -U username userdata -h localhost -W
+
+# Cambiar la contraseña del usuario postgres
+\password postgres
+
+# mostrar los usuarios
+\du
+
+# mostrar las bases de datos
+\l
+
+# restaurar una bases de datos
+\c userdata
+\i /absolute/route/path/file.sql
+
+# Salir ===
+\q
+

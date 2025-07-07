@@ -1,0 +1,7 @@
+# salvar una bases de datos via SSH
+pg_dump \
+  -U username \
+  -d userdata \
+  -h localhost \
+  -p 5432 \
+  -f /path/file.sql
