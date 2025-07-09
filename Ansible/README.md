@@ -1,4 +1,4 @@
-# Ansibble
+# Ansible
 ## Rol: Proxmox-common
   - Actualiza Proxmox
   - Instala Herramientas: vim-nox, tmux
