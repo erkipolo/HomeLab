@@ -1,7 +1,10 @@
 # Apt via Proxy
 tee -a /etc/apt/apt.conf <<EOF
-acquire::https::proxy "http://localhost:3128/";
-acquire::http::proxy  "http://localhost:3128/";
+acquire::http::proxy::localhost "DIRECT";
+acquire::socks::proxy           "http://localhost:3128";
+acquire::https::proxy           "http://localhost:3128/";
+acquire::http::proxy            "http://localhost:3128/";
+acquire::ftp::proxy             "http://localhost:3128";
 EOF
 
 # Apt no check valid date
