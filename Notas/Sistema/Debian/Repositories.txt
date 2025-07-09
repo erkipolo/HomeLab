@@ -1,0 +1,137 @@
+# Local DVD
+tee -a /etc/apt/sources.list.d/local.dvd.list <<EOF
+deb [trusted=yes] file:/home/user/debian stable main non-free-firmware
+EOF
+
+# Debian Principal
+tee /etc/apt/sources.list.d/debian.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://ftp.debian.org/debian
+Suites: stable stable-updates
+Components: contrib main non-free non-free-firmware
+EOF
+
+# Debian de Seguridad
+tee /etc/apt/sources.list.d/security.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://security.debian.org/debian-security
+Suites: stable-security
+Components: contrib main non-free non-free-firmware
+EOF
+
+# Proxmox Virtual Enviroment
+tee /etc/apt/sources.list.d/proxmox.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://download.proxmox.com/debian/pve
+Suites: bookworm
+Components: pve-no-subscription
+EOF
+
+# Ceph
+tee /etc/apt/sources.list.d/ceph.list <<EOF
+deb http://download.proxmox.com/debian/ceph-reef bookworm no-subscription
+EOF
+
+# Proxmox Backup Server
+tee /etc/apt/sources.list.d/proxmox-backup-server.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://download.proxmox.com/debian/pbs
+Suites: bookworm
+Components: pbs-no-subscription
+EOF
+
+# Debian Multimedia
+tee /etc/apt/sources.list.d/multimedia.sources <<EOF
+Enabled: yes
+Types: deb
+Trusted: yes
+Languages: es
+Architectures: amd64
+Uris: http://www.deb-multimedia.org
+Suites: stable
+Components: main non-free
+EOF
+
+# Para agregar el GPG de Debian Multimedia
+apt -yq install deb-multimedia-keyring
+sed -i "/Trusted/d" /etc/apt/sources.list.d/multimedia.sources
+
+# Firefox
+install -d -m 0755 /etc/apt/keyrings
+curl -fsSLo /etc/apt/keyrings/packages.mozilla.org.asc https://packages.mozilla.org/apt/repo-signing-key.gpg
+echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" | tee -a /etc/apt/sources.list.d/mozilla.list > /dev/null
+
+# Firefox (Si debes darle prioridad sobre snap)
+tee /etc/apt/preferences.d/mozilla <<EOF
+Package: *
+Pin: origin packages.mozilla.org
+Pin-Priority: 1000
+EOF
+
+# Brave
+curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg arch=amd64] https://brave-browser-apt-release.s3.brave.com/ stable main" | tee /etc/apt/sources.list.d/brave-browser-release.list > /dev/null
+
+# Google Chrome
+curl -fsS  https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg  --dearmor -o /usr/share/keyrings/google-chrome.gpg
+echo "deb [signed-by=/usr/share/keyrings/google-chrome.gpg arch=amd64] https://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list > /dev/null
+
+# Messenger de Facebook (Caprine)
+echo "deb [trusted=yes] https://apt.fury.io/lefterisgar/ * *" > /etc/apt/sources.list.d/caprine.list
+
+# Veracrypt
+wget -qO - https://notesalexp.org/debian/alexp_key.asc | gpg --dearmor | tee /usr/share/keyrings/alexp_key.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/alexp_key.gpg] https://notesalexp.org/debian/bookworm/ bookworm main" | tee /etc/apt/sources.list.d/veracrypt.list > /dev/null
+
+# Megasync
+curl -o /etc/apt/trusted.gpg.d/meganz-deb12.asc 'https://mega.nz/linux/repo/Debian_12/Release.key'
+echo 'deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/meganz-deb12.asc] https://mega.nz/linux/repo/Debian_12 ./' | tee /etc/apt/sources.list.d/megasync.list > /dev/null
+
+# MariaDB
+install -d -m 0755 /etc/apt/keyrings
+curl -o /etc/apt/keyrings/mariadb-keyring.pgp 'https://mariadb.org/mariadb_release_signing_key.pgp'
+tee /etc/apt/sources.list.d/mariadb.sources <<EOF
+X-Repolib-Name: MariaDB
+Types: deb
+Uris: https://mirrors.aliyun.com/mariadb/repo/11.rc/debian
+Suites: bookworm
+Components: main
+Signed-By: /etc/apt/keyrings/mariadb-keyring.pgp
+EOF
+
+# PostgreSQL
+echo "deb [arch=amd64] http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+apt-key export ACCC4CF8 | gpg --dearmour -o /etc/apt/trusted.gpg.d/pgdg.gpg
+
+# pgAdmin
+curl -fsS https://www.pgadmin.org/static/packages_pgadmin_org.pub | gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg
+sh -c 'echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list'
+
+# PHP
+sh -c 'echo "deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list'
+
+# Para agregar el GPG a PHP
+curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb
+dpkg -i /tmp/debsuryorg-archive-keyring.deb
+
+# OnlyOffice Desktop Editors
+mkdir -p -m 700 ~/.gnupg
+gpg --no-default-keyring --keyring gnupg-ring:/tmp/onlyoffice.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys CB2DE8E5
+chmod 644 /tmp/onlyoffice.gpg
+chown root:root /tmp/onlyoffice.gpg
+mv /tmp/onlyoffice.gpg /usr/share/keyrings/onlyoffice.gpg
+echo 'deb [signed-by=/usr/share/keyrings/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main' | tee -a /etc/apt/sources.list.d/onlyoffice.list
+

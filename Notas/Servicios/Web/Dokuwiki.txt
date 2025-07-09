@@ -1,0 +1,10 @@
+$> sudo apt update
+$> sudo apt install php libapache2-mod-php php-xml php-json php-mbstring php-zip php-intl php-gd php-sqlite3
+$> sudo systemctl restart apache2.service
+$> wget https://download.dokuwiki.org/src/dokuwiki/dokuwiki-stable.tgz
+$> tar xzvf dokuwiki-stable.tgz
+$> sudo mkdir /var/www/html/dokuwiki
+$> sudo mv dokuwiki-* /var/www/html/dokuwiki
+$> sudo chown -R www-data:www-data /var/www/html/dokuwiki
+
+sudo ufw allow 'Full'

@@ -1,0 +1,5 @@
+---
+- hosts: proxmoxs
+  roles:
+    - homelab_base
+    - proxmox-common

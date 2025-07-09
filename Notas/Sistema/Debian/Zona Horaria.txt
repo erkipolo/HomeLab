@@ -1,0 +1,3 @@
+# Le indicamos al sistema que estamos en Cuba
+dpkg-reconfigure tzdata
+  America/Havana

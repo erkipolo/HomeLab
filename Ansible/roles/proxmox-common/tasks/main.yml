@@ -1,0 +1,42 @@
+---
+- name: Copy template of APT config file
+  ansible.builtin.template:
+    src: apt.conf.j2
+    dest: /etc/apt/apt.conf
+
+- name: Copy template of ceph.list config file
+  ansible.builtin.template:
+    src: ceph.list.j2
+    dest: /etc/apt/sources.list.d/ceph.list
+
+- name: Copy template of pve-enterprise.list config file
+  ansible.builtin.template:
+    src: pve-enterprise.list.j2
+    dest: /etc/apt/sources.list.d/pve-enterprise.list
+
+- name: Copy template of sources.list config file
+  ansible.builtin.template:
+    src: sources.list.j2
+    dest: /etc/apt/sources.list
+
+- name: Copy template of pve-no-subscription.list config file
+  ansible.builtin.template:
+    src: pve-no-subscription.list.j2
+    dest: /etc/apt/sources.list.d/pve-no-subscription.list
+
+- name: update repository index and upgrade the system
+  ansible.builtin.apt:
+    update_cache: yes
+    upgrade: yes
+
+- name: install some tools (vim-nox, tmux)
+  ansible.builtin.apt:
+    name:
+      - vim-nox
+      - tmux
+    state: present
+
+- name: Download new CT template
+  ansible.builtin.get_url:
+    url: "http://download.proxmox.com/images/system/{{ ostemplate_name }}"
+    dest: "/var/lib/vz/template/cache/{{ ostemplate_name}}"

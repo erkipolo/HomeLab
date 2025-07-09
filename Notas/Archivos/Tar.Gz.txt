@@ -1,0 +1,8 @@
+# TAR.GZ, TAR.Z, .TGZ
+apt -yq install tar gzip
+
+# Compress
+tar czvf archivo.tar.gz /archivo/carpeta/*
+
+# Uncompress
+tar xzvf archivo.tar.gz

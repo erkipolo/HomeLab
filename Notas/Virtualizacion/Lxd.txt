@@ -1,0 +1,127 @@
+Tested on debian 12
+
+sudo apt install lxd lxd-tools
+
+lxd init
+  Would you like to use LXD clustering? (yes/no) [default=no]: 
+  Do you want to configure a new storage pool? (yes/no) [default=yes]: 
+  Name of the new storage pool [default=default]: 
+  Name of the storage backend to use (dir, lvm) [default=dir]: 
+  Would you like to connect to a MAAS server? (yes/no) [default=no]: 
+  Would you like to create a new local network bridge? (yes/no) [default=yes]: 
+  What should the new bridge be called? [default=lxdbr0]: 
+  What IPv4 address should be used? (CIDR subnet notation, “auto” or “none”) [default=auto]: 
+  What IPv6 address should be used? (CIDR subnet notation, “auto” or “none”) [default=auto]: 
+  Would you like the LXD server to be available over the network? (yes/no) [default=no]: 
+  Would you like stale cached images to be updated automatically? (yes/no) [default=yes]: 
+  Would you like a YAML "lxd init" preseed to be printed? (yes/no) [default=no]: 
+
+ip a
+  4: lxdbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+      link/ether 00:16:3e:90:cd:ff brd ff:ff:ff:ff:ff:ff
+      inet 10.106.73.1/24 scope global lxdbr0
+         valid_lft forever preferred_lft forever
+      inet6 fd42:d667:377f:33be::1/64 scope global 
+         valid_lft forever preferred_lft forever
+
+lxc remote list
+  +-----------------+------------------------------------------+---------------+-------------+--------+--------+--------+
+  |      NAME       |                   URL                    |   PROTOCOL    |  AUTH TYPE  | PUBLIC | STATIC | GLOBAL |
+  +-----------------+------------------------------------------+---------------+-------------+--------+--------+--------+
+  | images          | https://images.linuxcontainers.org       | simplestreams | none        | YES    | NO     | NO     |
+  +-----------------+------------------------------------------+---------------+-------------+--------+--------+--------+
+  | local (current) | unix://                                  | lxd           | file access | NO     | YES    | NO     |
+  +-----------------+------------------------------------------+---------------+-------------+--------+--------+--------+
+  | ubuntu          | https://cloud-images.ubuntu.com/releases | simplestreams | none        | YES    | YES    | NO     |
+  +-----------------+------------------------------------------+---------------+-------------+--------+--------+--------+
+  | ubuntu-daily    | https://cloud-images.ubuntu.com/daily    | simplestreams | none        | YES    | YES    | NO     |
+  +-----------------+------------------------------------------+---------------+-------------+--------+--------+--------+
+
+lxc image list images:
+  +-------+-------------+--------+-------------+--------------+------+------+-------------+
+  | ALIAS | FINGERPRINT | PUBLIC | DESCRIPTION | ARCHITECTURE | TYPE | SIZE | UPLOAD DATE |
+  +-------+-------------+--------+-------------+--------------+------+------+-------------+
+
+lxc image list ubuntu: | grep "x86_64" | grep "24.04" | grep "CONTAINER"
+  | n (9 more)         | 40d8df642812 | yes    | ubuntu 24.04 LTS amd64 (release) (20241119)     | x86_64       | CONTAINER       | 254.20MB  | Nov 19, 2024 at 12:00am (UTC) |
+  |                    | 1f4c6fdd3de3 | yes    | ubuntu 24.04 LTS amd64 (release) (20240622)     | x86_64       | CONTAINER       | 196.54MB  | Jun 22, 2024 at 12:00am (UTC) |
+  |                    | 1f320c77946e | yes    | ubuntu 24.04 LTS amd64 (release) (20240724)     | x86_64       | CONTAINER       | 196.92MB  | Jul 24, 2024 at 12:00am (UTC) |
+  |                    | 2e1e06db4f0a | yes    | ubuntu 24.04 LTS amd64 (release) (20240702)     | x86_64       | CONTAINER       | 240.44MB  | Jul 2, 2024 at 12:00am (UTC)  |
+  |                    | 3a36ed46dc29 | yes    | ubuntu 24.04 LTS amd64 (release) (20240608)     | x86_64       | CONTAINER       | 195.72MB  | Jun 8, 2024 at 12:00am (UTC)  |
+  |                    | 3e96c5a5151c | yes    | ubuntu 24.04 LTS amd64 (release) (20240725)     | x86_64       | CONTAINER       | 197.02MB  | Jul 25, 2024 at 12:00am (UTC) |
+  |                    | 4dde215baaa6 | yes    | ubuntu 24.04 LTS amd64 (release) (20240911)     | x86_64       | CONTAINER       | 197.68MB  | Sep 11, 2024 at 12:00am (UTC) |
+  |                    | 5b63b8130358 | yes    | ubuntu 24.04 LTS amd64 (release) (20240806)     | x86_64       | CONTAINER       | 197.06MB  | Aug 6, 2024 at 12:00am (UTC)  |
+  |                    | 6e910ea891ba | yes    | ubuntu 24.04 LTS amd64 (release) (20240605.1)   | x86_64       | CONTAINER       | 195.62MB  | Jun 5, 2024 at 12:00am (UTC)  |
+  |                    | 7b285c64ffc2 | yes    | ubuntu 24.04 LTS amd64 (release) (20240710)     | x86_64       | CONTAINER       | 240.34MB  | Jul 10, 2024 at 12:00am (UTC) |
+  |                    | 9ba68da50782 | yes    | ubuntu 24.04 LTS amd64 (release) (20240806)     | x86_64       | CONTAINER       | 240.63MB  | Aug 6, 2024 at 12:00am (UTC)  |
+  |                    | 35efc8227a20 | yes    | ubuntu 24.04 LTS amd64 (release) (20241004)     | x86_64       | CONTAINER       | 197.96MB  | Oct 4, 2024 at 12:00am (UTC)  |
+  |                    | 37e66cd61060 | yes    | ubuntu 24.04 LTS amd64 (release) (20241119)     | x86_64       | CONTAINER       | 206.24MB  | Nov 19, 2024 at 12:00am (UTC) |
+  |                    | 91c12543d4f6 | yes    | ubuntu 24.04 LTS amd64 (release) (20240622)     | x86_64       | CONTAINER       | 240.24MB  | Jun 22, 2024 at 12:00am (UTC) |
+  |                    | 258c6e58b226 | yes    | ubuntu 24.04 LTS amd64 (release) (20240725)     | x86_64       | CONTAINER       | 240.58MB  | Jul 25, 2024 at 12:00am (UTC) |
+  |                    | 602f1cb373c0 | yes    | ubuntu 24.04 LTS amd64 (release) (20241106)     | x86_64       | CONTAINER       | 253.98MB  | Nov 6, 2024 at 12:00am (UTC)  |
+  |                    | 788feb0b7c4a | yes    | ubuntu 24.04 LTS amd64 (release) (20240911)     | x86_64       | CONTAINER       | 241.27MB  | Sep 11, 2024 at 12:00am (UTC) |
+  |                    | 2322b060fb0e | yes    | ubuntu 24.04 LTS amd64 (release) (20240628)     | x86_64       | CONTAINER       | 240.25MB  | Jun 28, 2024 at 12:00am (UTC) |
+  |                    | 2961ee641e64 | yes    | ubuntu 24.04 LTS amd64 (release) (20240608)     | x86_64       | CONTAINER       | 239.24MB  | Jun 8, 2024 at 12:00am (UTC)  |
+  |                    | 7057ecbc909e | yes    | ubuntu 24.04 LTS amd64 (release) (20240605.1)   | x86_64       | CONTAINER       | 239.16MB  | Jun 5, 2024 at 12:00am (UTC)  |
+  |                    | 9279d7f889b1 | yes    | ubuntu 24.04 LTS amd64 (release) (20240821)     | x86_64       | CONTAINER       | 197.29MB  | Aug 21, 2024 at 12:00am (UTC) |
+  |                    | 74957a558028 | yes    | ubuntu 24.04 LTS amd64 (release) (20241004)     | x86_64       | CONTAINER       | 241.51MB  | Oct 4, 2024 at 12:00am (UTC)  |
+  |                    | a5a6eb33afae | yes    | ubuntu 24.04 LTS amd64 (release) (20240724)     | x86_64       | CONTAINER       | 240.73MB  | Jul 24, 2024 at 12:00am (UTC) |
+  |                    | a5610513ffd6 | yes    | ubuntu 24.04 LTS amd64 (release) (20240809)     | x86_64       | CONTAINER       | 197.19MB  | Aug 9, 2024 at 12:00am (UTC)  |
+  |                    | abe815b8b3d0 | yes    | ubuntu 24.04 LTS amd64 (release) (20240809)     | x86_64       | CONTAINER       | 241.02MB  | Aug 9, 2024 at 12:00am (UTC)  |
+  |                    | c9fba5728bfe | yes    | ubuntu 24.04 LTS amd64 (release) (20240423)     | x86_64       | CONTAINER       | 238.37MB  | Apr 23, 2024 at 12:00am (UTC) |
+  |                    | c67fe131125d | yes    | ubuntu 24.04 LTS amd64 (release) (20240710)     | x86_64       | CONTAINER       | 196.76MB  | Jul 10, 2024 at 12:00am (UTC) |
+  |                    | c5855600b3a4 | yes    | ubuntu 24.04 LTS amd64 (release) (20240628)     | x86_64       | CONTAINER       | 196.68MB  | Jun 28, 2024 at 12:00am (UTC) |
+  |                    | d9c3687b85c6 | yes    | ubuntu 24.04 LTS amd64 (release) (20241106)     | x86_64       | CONTAINER       | 206.05MB  | Nov 6, 2024 at 12:00am (UTC)  |
+  |                    | d80748fb6730 | yes    | ubuntu 24.04 LTS amd64 (release) (20240423)     | x86_64       | CONTAINER       | 194.96MB  | Apr 23, 2024 at 12:00am (UTC) |
+  |                    | dd50a97865f3 | yes    | ubuntu 24.04 LTS amd64 (release) (20240523.1)   | x86_64       | CONTAINER       | 238.71MB  | May 23, 2024 at 12:00am (UTC) |
+  |                    | e5586ab9f576 | yes    | ubuntu 24.04 LTS amd64 (release) (20240523.1)   | x86_64       | CONTAINER       | 195.28MB  | May 23, 2024 at 12:00am (UTC) |
+  |                    | ed8db44f4f76 | yes    | ubuntu 24.04 LTS amd64 (release) (20240702)     | x86_64       | CONTAINER       | 196.65MB  | Jul 2, 2024 at 12:00am (UTC)  |
+  |                    | f0fbf5affa6a | yes    | ubuntu 24.04 LTS amd64 (release) (20240821)     | x86_64       | CONTAINER       | 241.13MB  | Aug 21, 2024 at 12:00am (UTC) |
+
+
+lxc image list ubuntu-daily: | grep "x86_64" | grep "24.04" | grep "CONTAINER"
+  | n (9 more)         | 31c4eae7d282 | yes    | ubuntu 24.04 LTS amd64 (daily) (20241128)   | x86_64       | CONTAINER       | 254.68MB  | Nov 28, 2024 at 12:00am (UTC) |
+  |                    | 6ee4b2d800ef | yes    | ubuntu 24.04 LTS amd64 (daily) (20241128)   | x86_64       | CONTAINER       | 207.42MB  | Nov 28, 2024 at 12:00am (UTC) |
+  |                    | 07abd51036ee | yes    | ubuntu 24.04 LTS amd64 (daily) (20241120)   | x86_64       | CONTAINER       | 206.30MB  | Nov 20, 2024 at 12:00am (UTC) |
+  |                    | 37e66cd61060 | yes    | ubuntu 24.04 LTS amd64 (daily) (20241119)   | x86_64       | CONTAINER       | 206.24MB  | Nov 19, 2024 at 12:00am (UTC) |
+  |                    | 40d8df642812 | yes    | ubuntu 24.04 LTS amd64 (daily) (20241119)   | x86_64       | CONTAINER       | 254.20MB  | Nov 19, 2024 at 12:00am (UTC) |
+  |                    | 602f1cb373c0 | yes    | ubuntu 24.04 LTS amd64 (daily) (20241106)   | x86_64       | CONTAINER       | 253.98MB  | Nov 6, 2024 at 12:00am (UTC)  |
+  |                    | d9c3687b85c6 | yes    | ubuntu 24.04 LTS amd64 (daily) (20241106)   | x86_64       | CONTAINER       | 206.05MB  | Nov 6, 2024 at 12:00am (UTC)  |
+  |                    | e1d35fb29448 | yes    | ubuntu 24.04 LTS amd64 (daily) (20241126)   | x86_64       | CONTAINER       | 253.71MB  | Nov 26, 2024 at 12:00am (UTC) |
+  |                    | e64885639b22 | yes    | ubuntu 24.04 LTS amd64 (daily) (20241126)   | x86_64       | CONTAINER       | 206.35MB  | Nov 26, 2024 at 12:00am (UTC) |
+  |                    | f547114f010e | yes    | ubuntu 24.04 LTS amd64 (daily) (20241120)   | x86_64       | CONTAINER       | 254.27MB  | Nov 20, 2024 at 12:00am (UTC) |
+
+
+
+---------------------------
+To setup LXD, which configures a bridge, which your containers connect to and a default storage backend, you can just run.
+Adjust the size depending on your disk allocation.
+  lxd init --auto --storage-backend=zfs --storage-create-loop=50GB
+
+Ideally, you have a extra partition, you can hand over to LXD.
+This increases I/O performance, since with a loop device, we basically run a filesystem in a filesystem and this is going to cost us some I/O performance.
+  lxd init --auto --storage-backend=zfs --storage-create-device=/dev/sda2
+
+To create your first container run.
+  lxc launch images:debian/bookworm/amd64 --device root,size=10GiB --config limits.cpu=1 --config limits.memory=1024MiB containeeer
+
+To give this container access to the network.
+  lxc config device add containeeer eth0 nic nictype=bridged parent=lxdbr0 name=eth0
+
+If you want to forward a specific port like 443 for a webserver, you can simply do this with that.
+  lxc config device add containeeer 443 proxy listen=tcp:0.0.0.0:443 connect=tcp:127.0.0.1:443
+
+enter the container and setup your stuff
+  lxc exec containeeer -- /bin/bash
+
+if you wanna get rid of a container, you have to run.
+  lxc stop containeeer && lxc delete containeeer
+
+To update the limits.
+  lxc config set containeeer limits.cpu 4
+  lxc config set containeeer limits.memory 2048MiB
+  lxc config device set containeeer root size 20GB
+
+To list all containers.
+  lxc list
+

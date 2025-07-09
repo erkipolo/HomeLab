@@ -1,0 +1,15 @@
+apt -yq install ssmtp
+
+vim.tiny /etc/ssmtp/ssmtp.conf
+root=postmaster
+mailhub=smtp_relay.domain.tld:25
+hostname=hostname.domain.tld
+FromLineOverride=YES
+UseSTARTTLS=YES
+
+ln -s /usr/sbin/ssmtp /usr/bin/mail
+
+ln -s /usr/sbin/ssmtp /usr/bin/sendmail
+
+echo "Testing...1...2...3" | ssmtp someone@example.com
+

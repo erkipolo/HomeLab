@@ -1,0 +1,75 @@
+linux, MacOS: /etc/hosts
+Windows: C:\Windows\System32\drivers\etc\Hosts
+
+Proxmox: Need to be Unprivileged=1 and Nesting=1
+
+####### Server #######
+
+apt update
+
+apt dist-upgrade
+
+lsof | grep -i listen
+
+apt install net-tools
+netstat -4nltp
+
+systemctl stop systemd-resolved
+
+systemctl status systemd-resolved
+
+systemctl disable systemd-resolved
+
+apt install dnsmasq
+
+systemctl status dnsmasq
+
+editor /etc/dnsmasq.conf
+######### DNS #########
+#uncomment
+domain-needed
+bogue-priv
+no-resolv
+#add
+server=8.8.8.8
+#modified
+local=/bluemonkey4n6.local/
+#uncomment
+expand-hosts
+#modified
+domain=bluemonkey4n6.local
+######### DHCP #########
+#add
+dhcp-range=192.168.1.100,192.168.1.250,255.255.255.0,12h
+#add
+dhcp-option=option:router,192.168.1.1
+dhcp-option=option:dns-server,192.168.1.207
+#uncomment
+dhcp-authoritative
+
+grep -v -e "^#" -e "^$" /etc/dnsmasq.conf
+  domain-needed
+  bogue-priv
+  no-resolv
+  server=8.8.8.8
+  local=/bluemonkey4n6.local/
+  expand-hosts
+  domain=bluemonkey4n6.local
+  dhcp-range=192.168.1.100,192.168.1.250,255.255.255.0,12h
+  dhcp-option=option:router,192.168.1.1
+  dhcp-option=option:dns-server,192.168.1.207
+  dhcp-authoritative
+
+tee -a /etc/hosts <<EOF
+192.168.1.19  proxmox
+192.168.1.177 airdrop snapdrop
+192.168.1.77  openvpn
+EOF
+
+systemctl restart dnsmasq
+
+####### Client #######
+
+resolvectl status
+
+

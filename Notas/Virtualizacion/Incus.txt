@@ -1,0 +1,176 @@
+# Probado en debian 12
+
+sudo mkdir -p /etc/apt/keyrings/
+
+sudo curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc
+
+sudo sh -c 'cat <<EOF > /etc/apt/sources.list.d/zabbly-incus-stable.sources
+Enabled: yes
+Types: deb
+URIs: https://pkgs.zabbly.com/incus/stable
+Suites: $(. /etc/os-release && echo ${VERSION_CODENAME})
+Components: main
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/zabbly.asc
+EOF'
+
+sudo apt update
+
+sudo apt -yq install incus
+
+grep '^incus-admin' /etc/group
+
+sudo usermod -aG incus-admin ppcojo
+
+groups ppcojo
+
+incus admin init
+  Would you like to use clustering? (yes/no) [default=no]: 
+  Do you want to configure a new storage pool? (yes/no) [default=yes]: 
+  Name of the new storage pool [default=default]: 
+  Name of the storage backend to use (dir, lvm, lvmcluster) [default=dir]: 
+  Where should this storage pool store its data? [default=/var/lib/incus/storage-pools/default]: 
+  Would you like to create a new local network bridge? (yes/no) [default=yes]: 
+  What should the new bridge be called? [default=incusbr0]: 
+  What IPv4 address should be used? (CIDR subnet notation, “auto” or “none”) [default=auto]: 
+  What IPv6 address should be used? (CIDR subnet notation, “auto” or “none”) [default=auto]: 
+  Would you like the server to be available over the network? (yes/no) [default=no]: 
+  Would you like stale cached images to be updated automatically? (yes/no) [default=yes]: 
+  Would you like a YAML "init" preseed to be printed? (yes/no) [default=no]: 
+
+ip a
+  4: incusbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+      link/ether 00:16:3e:ca:49:b6 brd ff:ff:ff:ff:ff:ff
+      inet 10.183.156.1/24 scope global incusbr0
+         valid_lft forever preferred_lft forever
+      inet6 fd42:4665:f24b:2d1e::1/64 scope global 
+         valid_lft forever preferred_lft forever
+
+Nota; si no haces esto, no te funciona la red
+  sudo ufw allow in on incusbr0 comment 'incusbr0 for Incus'
+  sudo ufw route allow in on incusbr0 comment 'incusbr0 for Incus'
+  sudo ufw route allow out on incusbr0 comment 'incusbr0 for Incus'
+
+incus remote list
+  +-----------------+------------------------------------+---------------+-------------+--------+--------+--------+
+  |      NAME       |                URL                 |   PROTOCOL    |  AUTH TYPE  | PUBLIC | STATIC | GLOBAL |
+  +-----------------+------------------------------------+---------------+-------------+--------+--------+--------+
+  | images          | https://images.linuxcontainers.org | simplestreams | none        | YES    | NO     | NO     |
+  +-----------------+------------------------------------+---------------+-------------+--------+--------+--------+
+  | local (current) | unix://                            | incus         | file access | NO     | YES    | NO     |
+  +-----------------+------------------------------------+---------------+-------------+--------+--------+--------+
+
+incus image list images: debian/12
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  |             ALIAS             | HUELLA DIGITAL | PUBLIC |              DESCRIPCIÓN               | ARQUITECTURA |      TYPE       |   SIZE    |     UPLOAD DATE      |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12 (7 más)             | 3fec64b4d6bc   | yes    | Debian bookworm amd64 (20241128_05:24) | x86_64       | CONTAINER       | 87.32MiB  | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12 (7 más)             | 4605a06f16b4   | yes    | Debian bookworm amd64 (20241128_05:24) | x86_64       | VIRTUAL-MACHINE | 353.74MiB | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12/arm64 (3 más)       | 6b527a503163   | yes    | Debian bookworm arm64 (20241128_05:24) | aarch64      | VIRTUAL-MACHINE | 342.82MiB | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12/arm64 (3 más)       | 22eb86c92774   | yes    | Debian bookworm arm64 (20241128_05:24) | aarch64      | CONTAINER       | 84.67MiB  | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12/armhf (3 más)       | 650bad854e0d   | yes    | Debian bookworm armhf (20241128_05:24) | armv7l       | CONTAINER       | 82.42MiB  | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12/cloud (3 más)       | 045f986bd091   | yes    | Debian bookworm amd64 (20241128_05:24) | x86_64       | CONTAINER       | 115.13MiB | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12/cloud (3 más)       | d0e4088f973f   | yes    | Debian bookworm amd64 (20241128_05:24) | x86_64       | VIRTUAL-MACHINE | 381.68MiB | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12/cloud/arm64 (1 más) | 5bfec5b4d636   | yes    | Debian bookworm arm64 (20241128_05:24) | aarch64      | CONTAINER       | 111.58MiB | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12/cloud/arm64 (1 más) | a60a419ee604   | yes    | Debian bookworm arm64 (20241128_05:24) | aarch64      | VIRTUAL-MACHINE | 370.61MiB | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+  | debian/12/cloud/armhf (1 más) | d24010db2fbf   | yes    | Debian bookworm armhf (20241128_05:24) | armv7l       | CONTAINER       | 108.70MiB | 2024/11/27 19:00 CST |
+  +-------------------------------+----------------+--------+----------------------------------------+--------------+-----------------+-----------+----------------------+
+
+incus image list images: ubuntu/24.04
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  |              ALIAS               | HUELLA DIGITAL | PUBLIC |             DESCRIPCIÓN             | ARQUITECTURA |      TYPE       |    SIZE    |     UPLOAD DATE      |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble (7 más)             | 2d6a863e8fef   | yes    | Ubuntu noble amd64 (20241128_07:42) | x86_64       | CONTAINER       | 125.77MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble (7 más)             | 2847d987d3d0   | yes    | Ubuntu noble amd64 (20241128_07:42) | x86_64       | VIRTUAL-MACHINE | 277.95MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble/arm64 (3 más)       | 0cade34ac3ab   | yes    | Ubuntu noble arm64 (20241128_07:42) | aarch64      | CONTAINER       | 121.18MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble/arm64 (3 más)       | 32fd739ba616   | yes    | Ubuntu noble arm64 (20241128_07:42) | aarch64      | VIRTUAL-MACHINE | 286.00MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble/armhf (3 más)       | 1b78d396081b   | yes    | Ubuntu noble armhf (20241128_08:07) | armv7l       | CONTAINER       | 117.79MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble/cloud (3 más)       | 6d01be932b37   | yes    | Ubuntu noble amd64 (20241128_07:42) | x86_64       | VIRTUAL-MACHINE | 313.30MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble/cloud (3 más)       | 9e113b03c0c3   | yes    | Ubuntu noble amd64 (20241128_07:42) | x86_64       | CONTAINER       | 152.95MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble/cloud/arm64 (1 más) | 732e80a5441f   | yes    | Ubuntu noble arm64 (20241128_07:42) | aarch64      | VIRTUAL-MACHINE | 320.16MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble/cloud/arm64 (1 más) | 750385d396fe   | yes    | Ubuntu noble arm64 (20241128_07:42) | aarch64      | CONTAINER       | 147.43MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble/cloud/armhf (1 más) | 9ef8bf5c6ea6   | yes    | Ubuntu noble armhf (20241128_07:42) | armv7l       | CONTAINER       | 144.05MiB  | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+  | ubuntu/noble/desktop (3 más)     | e4b368f2ef09   | yes    | Ubuntu noble amd64 (20241128_07:42) | x86_64       | VIRTUAL-MACHINE | 1105.73MiB | 2024/11/27 19:00 CST |
+  +----------------------------------+----------------+--------+-------------------------------------+--------------+-----------------+------------+----------------------+
+
+incus list
+  +------+-------+------+------+------+-----------+
+  | NAME | STATE | IPV4 | IPV6 | TYPE | SNAPSHOTS |
+  +------+-------+------+------+------+-----------+
+
+incus launch images:debian/12 first
+
+incus image list
+  +-------+----------------+--------+----------------------------------------+--------------+-----------+----------+----------------------+
+  | ALIAS | HUELLA DIGITAL | PUBLIC |              DESCRIPCIÓN               | ARQUITECTURA |   TYPE    |   SIZE   |     UPLOAD DATE      |
+  +-------+----------------+--------+----------------------------------------+--------------+-----------+----------+----------------------+
+  |       | 3fec64b4d6bc   | no     | Debian bookworm amd64 (20241128_05:24) | x86_64       | CONTAINER | 87.32MiB | 2024/11/29 00:10 CST |
+  +-------+----------------+--------+----------------------------------------+--------------+-----------+----------+----------------------+
+
+sudo ls -lh /var/lib/incus/images/
+  total 88M
+  -rw-r--r-- 1 root root  676 nov 29 00:10 3fec64b4d6bc4e5415c69307dab20220cd15be36cdfa57638a675ff488fb9a63
+  -rw-r--r-- 1 root root  88M nov 29 00:10 3fec64b4d6bc4e5415c69307dab20220cd15be36cdfa57638a675ff488fb9a63.rootfs
+
+incus list
+  +-------+---------+--------------------+-----------------------------------------------+-----------+-----------+
+  | NAME  |  STATE  |        IPV4        |                     IPV6                      |   TYPE    | SNAPSHOTS |
+  +-------+---------+--------------------+-----------------------------------------------+-----------+-----------+
+  | first | RUNNING | 10.180.52.7 (eth0) | fd42:bc22:bf9e:fae5:216:3eff:fed1:61d4 (eth0) | CONTAINER | 0         |
+  +-------+---------+--------------------+-----------------------------------------------+-----------+-----------+
+
+incus stop first
+
+incus list
+  +-------+---------+------+------+-----------+-----------+
+  | NAME  |  STATE  | IPV4 | IPV6 |   TYPE    | SNAPSHOTS |
+  +-------+---------+------+------+-----------+-----------+
+  | first | STOPPED |      |      | CONTAINER | 0         |
+  +-------+---------+------+------+-----------+-----------+
+
+incus start first
+
+incus list
+  +-------+---------+--------------------+-----------------------------------------------+-----------+-----------+
+  | NAME  |  STATE  |        IPV4        |                     IPV6                      |   TYPE    | SNAPSHOTS |
+  +-------+---------+--------------------+-----------------------------------------------+-----------+-----------+
+  | first | RUNNING | 10.180.52.7 (eth0) | fd42:bc22:bf9e:fae5:216:3eff:fed1:61d4 (eth0) | CONTAINER | 0         |
+  +-------+---------+--------------------+-----------------------------------------------+-----------+-----------+
+
+incus shell first
+  root@first:~# logout
+
+incus delete first
+
+incus list
+  +------+-------+------+------+------+-----------+
+  | NAME | STATE | IPV4 | IPV6 | TYPE | SNAPSHOTS |
+  +------+-------+------+------+------+-----------+
+
+sudo apt install incus-ui-canonical
+
+incus config set core.https_address :8443
+
+w3m https://localhost:8443
+
+
+debian/bookworm/default

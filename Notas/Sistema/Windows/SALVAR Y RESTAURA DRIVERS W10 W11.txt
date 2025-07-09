@@ -1,0 +1,5 @@
+# EXPORTAR DRIVER W10 Y W11
+dism /online /export-driver /destination:C:/Copia-seguridad-drivers
+
+#RESTAURAR DRIVER
+dism /online /Add-Driver /Driver: C:/Copia-seguridad-drivers /Recurse

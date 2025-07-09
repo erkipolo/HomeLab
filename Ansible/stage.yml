@@ -1,0 +1,9 @@
+homelab_proxmoxs:
+  hosts:
+    192.168.56.105
+proxmoxs:
+  children: homelab_proxmoxs
+homelab:
+  children: homelab_proxmoxs
+  vars:
+    ostemplate_name: 'debian-12-standard_12.7-1_amd64.tar.zst'

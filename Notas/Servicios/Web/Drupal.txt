@@ -1,0 +1,4 @@
+/public_html/core/lib/Drupal.php
+const VERSION = '7.57';
+
+drush core-status drupal-version

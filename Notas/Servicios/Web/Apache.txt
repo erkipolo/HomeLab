@@ -1,0 +1,54 @@
+# Instalar apache
+apt -yq install apache2
+
+# Chequear la versión
+apache2 -v
+
+# Forzamos el uso de HTTPS
+tee /etc/apache2/sites-enabled/000-default.conf <<EOF
+<VirtualHost *:80>
+  RewriteEngine On
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
+</VirtualHost>
+EOF
+
+# habilitamos el modulo de apache que permite la redireccion a HTTPS
+a2enmod rewrite
+
+# Instalamos los certificados de ejemplo
+apt -yq install ssl-cert
+
+# Habilitamos el módulo HTTPS
+a2enmod ssl
+
+# Habilitamos el sitio por defecto HTTPS
+a2ensite default-ssl.conf
+
+# Chequeamos la sintaxis de la configuración
+apachectl configtest
+
+apt -yq install libapache2-mod-evasive
+
+a2enmod evasive
+
+tee /etc/apache2/mods-available/evasive.conf <<EOF
+<IfModule mod_evasive20.c>
+  DOSHashTableSize    3097
+  DOSPageCount        20
+  DOSSiteCount        200
+  DOSPageInterval     1
+  DOSSiteInterval     5
+  DOSBlockingPeriod   3600
+  
+  DOSEmailNotify      someone@domain.tld
+  #DOSSystemCommand    "su - someuser -c '/sbin/...%s...'"
+  DOSLogDir           "/var/log/mod_evasive"
+</IfModule>
+EOF
+
+mkdir /var/log/mod_evasive
+
+chown www-data:www-data /var/log/mod_evasive/
+
+# Reiniciamos el servicio
+systemctl restart apache2

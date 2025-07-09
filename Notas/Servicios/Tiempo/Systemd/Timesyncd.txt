@@ -1,0 +1,11 @@
+# Instalar el cliente NTP de Systemd
+apt -yq install systemd-timesyncd
+
+# Configurar el servidor NTP en systemd
+sed -i -r 's/#?(NTP)=.*$/\1=0\.arch\.pool\.ntp\.org/' /etc/systemd/timesyncd.conf
+
+# Reiniciar el servicio
+systemctl restart systemd-timesyncd
+
+# Verificar si el servicio se está ejecutando
+systemctl status systemd-timesyncd

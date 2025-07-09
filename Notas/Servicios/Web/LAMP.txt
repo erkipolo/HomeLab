@@ -1,0 +1,19 @@
+# Requiere
+- Apache
+- MariaDB
+- Php
+
+# Instalamos el soporte de PHP para Apache y MariaDB
+apt -yq install \
+libapache2-mod-php \
+php-fpm \
+php-mysql
+
+# Habilitamos el modulo de PHP para Apache
+a2enmod proxy_fcgi setenvif
+
+# Le indicamos ha Apache que use PHP
+a2enconf php8.3-fpm
+
+# Reiniciamos el servicio
+systemctl restart apache2

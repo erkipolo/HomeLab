@@ -1,0 +1,26 @@
+# Instalar el cliente de SSH
+apt -yq install openssh-client
+
+# Gestion de conexiones
+tee $HOME/.ssh/config <<EOF
+host company_name
+  Hostname server_hostname
+  User remote_username
+  Port remote_port
+  IdentityFile /path/private_key
+EOF
+
+# Forma de acceder con gestion de conexiones
+ssh company_name
+
+# Forma de acceder manualmente
+LC_ALL="es_ES.UTF-8" ssh \
+-l remote_username \
+-i /path/private.key \
+-p 22 \
+remote_hostname
+
+# Copiar archivos autenticando con llave
+scp -i /path/private_key \
+file.org \
+remote_username@remote_hostname:/path/

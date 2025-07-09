@@ -1,0 +1,557 @@
+-----------------------------------------------
+-----------------------------------------------
+(debian 12.7)
+-----------------------------------------------
+apt -yq install default-jre{,-headless}
+
+java -version
+  openjdk version "17.0.12" 2024-07-16 (debian 12.7)
+
+tee -a /etc/environment <<EOF
+JAVA_HOME=/usr/lib/jvm/default-java
+EOF
+
+source /etc/environment
+
+#groupadd tomcat
+
+#useradd tomcat -s /usr/sbin/nologin -g tomcat -d /home/tomcat
+
+#passwd tomcat
+
+#apt -yq install sudo
+
+#gpasswd -a tomcat sudo
+
+apt -yq install tomcat10{,-admin,-examples}
+
+editor /etc/tomcat10/tomcat-users.xml
+<tomcat-users xmlns="http://tomcat.apache.org/xml"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
+              version="1.0">
+  <role rolename="admin-gui"/>
+  <role rolename="manager-gui"/>
+  <user username="tomcat" password="<must-be-changed>" roles="admin-gui,manager-gui"/>
+</tomcat-users>
+
+editor /usr/share/tomcat10-admin/manager/WEB-INF/web.xml
+      <!-- 200MB max -->
+      <max-file-size>209715200</max-file-size>
+      <max-request-size>209715200</max-request-size>
+
+editor /etc/tomcat9/server.xml
+    <Connector port="80" protocol="HTTP/1.1"
+               connectionTimeout="20000"
+               redirectPort="8443" />
+
+systemctl restart tomcat10
+
+systemctl status tomcat10
+
+w3m http://x.x.x.x:8080/manager/html
+  user: tomcat
+  pass: 
+-----------------------------------------------
+-----------------------------------------------
+
+
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+    DESTROY THE CONTAINER IF EXIST
+---------------------------------------------------------------------
+pct destroy 209 --force
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+    CREATE THE NEW CONTAINER
+---------------------------------------------------------------------
+mitrans-cephfs:vztmpl/debian-10-standard_10.7-1_amd64.tar.gz \
+mitrans-cephfs:vztmpl/debian-11-standard_11.7-1_amd64.tar.zst \
+mitrans-cephfs:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
+
+pct create 209 \
+mitrans-cephfs:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
+--cores 4 \
+--hostname ncenergux \
+--searchdomain nc.mitrans.gob.cu \
+--nameserver 8.8.8.8,172.30.1.20 \
+--memory 4096 \
+--swap 4096 \
+--net0 name=eth0,ip=172.30.1.64/24,bridge=vmbr2,firewall=1 \
+--net1 name=eth1,ip=172.30.0.37/26,bridge=vmbr0,firewall=1,gw=172.30.0.5 \
+--onboot 1 \
+--rootfs mitrans-ceph:50 \
+--unprivileged 1 \
+--features nesting=1
+
+pct start 209
+
+pct enter 209
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+    AUTOMATIZACION
+---------------------------------------------------------------------
+vim.tiny Energux.bash
+#! /bin/bash
+
+#####################################################################
+##              BLOCK ROOT USER                                    ##
+#####################################################################
+passwd -l root
+
+#####################################################################
+##              SOME KERNEL SECURITY                               ##
+#####################################################################
+tee /etc/sysctl.conf <<EOF
+net.ipv4.conf.default.rp_filter=1
+net.ipv4.conf.all.rp_filter=1
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.tcp_max_syn_backlog = 2048
+net.ipv4.tcp_synack_retries = 2
+net.ipv4.tcp_syn_retries = 5
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_timestamps = 0
+EOF
+
+#####################################################################
+##              RELOAD SOME KERNEL SECURITY                        ##
+#####################################################################
+sysctl -p
+
+#####################################################################
+##              CONFIGURAMOS EL SERVIICIO DE ENRUTAMIENTO          ##
+#####################################################################
+tee -a /etc/network/interfaces <<EOF
+up ip -4 route add 172.30.2.0/24 via 172.30.1.15
+up ip -4 route add 172.30.3.0/24 via 172.30.1.14
+up ip -4 route add 172.30.4.0/24 via 172.30.1.13
+up ip -4 route add 172.30.5.0/24 via 172.30.1.12
+up ip -4 route add 172.30.6.0/24 via 172.30.1.11
+up ip -4 route add 172.30.7.0/24 via 172.30.1.10
+up ip -4 route add 172.30.8.0/24 via 172.30.1.9
+up ip -4 route add 172.30.9.0/24 via 172.30.1.8
+up ip -4 route add 172.30.10.0/24 via 172.30.1.7
+up ip -4 route add 172.30.11.0/24 via 172.30.1.6
+up ip -4 route add 172.30.12.0/24 via 172.30.1.5
+up ip -4 route add 172.30.13.0/24 via 172.30.1.16
+up ip -4 route add 172.30.14.0/24 via 172.30.1.17
+EOF
+
+#####################################################################
+##              REINICIAMOS EL SERVICIO DE RED                     ##
+#####################################################################
+systemctl restart networking
+
+#####################################################################
+##              CONFIGURANDO EL IDIOMA DEL SISTEMA                 ##
+#####################################################################
+dpkg-reconfigure locales
+
+#####################################################################
+##              CONFIGURANDO LA ZONA HORARIA                       ##
+#####################################################################
+dpkg-reconfigure tzdata
+
+#####################################################################
+##              ELIMINAMOS LOS SERVICIOS POR DEFECTO               ##
+#####################################################################
+apt -yq --purge autoremove nano postfix openssh-{server,client,sftp-server}
+
+#####################################################################
+## CONFIGURAMOS QUE "APT" NO CHEQUEA LA EXPIRACION DEL REPOSITORIO ##
+#####################################################################
+tee -a /etc/apt/apt.conf <<EOF
+#Acquire::Check-Valid-Until "0";
+EOF
+
+#####################################################################
+##            CONFIGURAMOS EL USO DE PROXY PARA LA HERRAMIENTA APT ##
+#####################################################################
+tee -a /etc/apt/apt.conf <<EOF
+#Acquire::Https::Proxy "http://172.30.1.24:3128/";
+#Acquire::Http::Proxy "http://172.30.1.24:3128/";
+EOF
+
+#####################################################################
+##              CONFIGURAMOS LOS REPOSITORIOS DE DEBIAN            ##
+#####################################################################
+tee /etc/apt/sources.list <<EOF
+EOF
+
+tee /etc/apt/sources.list.d/debian.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://ftp.debian.org/debian
+Suites: bookworm bookworm-updates
+Components: contrib main non-free non-free-firmware
+EOF
+
+tee /etc/apt/sources.list.d/security.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://security.debian.org/debian-security
+Suites: bookworm-security
+Components: contrib main non-free non-free-firmware
+EOF
+
+#####################################################################
+##              CONFIGURAMOS LOS REPOSITORIOS DE DEBIAN            ##
+#####################################################################
+tee /etc/apt/sources.list.d/olddebian.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://ftp.debian.org/debian
+Suites: bullseye bullseye-updates
+Components: contrib main non-free
+EOF
+
+tee /etc/apt/sources.list.d/oldsecurity.sources <<EOF
+Enabled: yes
+Types: deb
+Languages: es
+Architectures: amd64
+Uris: http://security.debian.org/debian-security
+Suites: bullseye-security
+Components: contrib main non-free
+EOF
+
+#####################################################################
+##              ACTUALIZAMOS LA LISTA DE PAQUETES                  ##
+#####################################################################
+apt update
+
+#####################################################################
+##              ACTUALIZAMOS EL SISTEMA                            ##
+#####################################################################
+apt -yq dist-upgrade
+
+#####################################################################
+##              INSTALAMOS EL SERVICIO SMTP                        ##
+#####################################################################
+apt -yq install ssmtp
+
+#####################################################################
+##              CONFIGURAMOS EL SMART HOST AL SERVICIO SMTP        ##
+#####################################################################
+sed -i 's/mailhub\=mail/mailhub\=smtp\.nc\.mitrans\.gob\.cu\:25/g' /etc/ssmtp/ssmtp.conf
+
+#####################################################################
+##              HABILITAMOS EL USO DE TLS EN EL SERVICIO SMTP      ##
+#####################################################################
+tee -a /etc/ssmtp/ssmtp.conf <<EOF
+FromLineOverride=YES
+UseSTARTTLS=YES
+EOF
+
+#####################################################################
+##      REEMPLAZAMOS LAS APLICACIONES QUE OFERTAN EL SERVICIO SMTP ##
+#####################################################################
+ln -s /usr/sbin/ssmtp /usr/bin/mail
+
+ln -s /usr/sbin/ssmtp /usr/bin/sendmail
+
+#####################################################################
+##              INSTALAMOS UN CLIENTE DEL SERVICIO SMTP            ##
+#####################################################################
+apt -yq install mailutils
+
+#####################################################################
+##          INSTALAMOS EL SERVICIO DE ACTUALIZACIONES AUTOMATICAS  ##
+#####################################################################
+apt -yq install unattended-upgrades
+
+#####################################################################
+##        CONFIGURAMOS EL SERVICIO DE ACTUALIZACIONES AUTOMATICAS  ##
+#####################################################################
+tee /etc/apt/apt.conf.d/50unattended-upgrades <<EOF
+Unattended-Upgrade::Origins-Pattern {
+  "origin=Debian,codename=${distro_codename}-updates";
+  "origin=Debian,codename=${distro_codename},label=Debian";
+  "origin=Debian,codename=${distro_codename},label=Debian-Security";
+  "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+};
+Unattended-Upgrade::Package-Blacklist {
+};
+EOF
+
+tee /etc/apt/apt.conf.d/20auto-upgrades  <<EOF
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+APT::Periodic::Download-Upgradeable-Packages "1";
+EOF
+
+#####################################################################
+##        ACTIVAMOS EL SERVICIO DE ACTUALIZACIONES AUTOMATICAS     ##
+#####################################################################
+dpkg-reconfigure -plow unattended-upgrades
+
+#####################################################################
+##        REINICIAMOS EL SERVICIO DE ACTUALIZACIONES AUTOMATICAS   ##
+#####################################################################
+systemctl restart unattended-upgrades
+
+#####################################################################
+##          INSTALAMOS EL SERVICIO DE CORTA FUEGOS                 ##
+#####################################################################
+apt -yq install iptables-persistent ulogd2
+
+#####################################################################
+##        CONFIGURAMOS EL SERVICIO DE CORTAFUEGOS                  ##
+#####################################################################
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT ! -i lo -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+iptables -A INPUT -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -p udp -m udp --dport 33434:33534 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-port-unreachable
+
+ip6tables -P INPUT DROP
+ip6tables -P FORWARD DROP
+ip6tables -P OUTPUT ACCEPT
+ip6tables -A INPUT -i lo -j ACCEPT
+ip6tables -A INPUT ! -i lo -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+#####################################################################
+##    SALVAMOS LAS CONFIGURACIONES DE EL SERVICIO DE CORTA FUEGOS  ##
+#####################################################################
+iptables-save -f /etc/iptables/rules.v4
+ip6tables-save -f /etc/iptables/rules.v6
+
+#####################################################################
+##    CONFIGURAMOS LA ROTACION DE EL SERVICIO DE CORTA FUEGOS      ##
+#####################################################################
+tee /etc/logrotate.d/ulogd2 <<EOF
+/var/log/ulog/*.log /var/log/ulog/*.pcap {
+  daily
+  dateext
+  missingok
+  rotate 365
+  compress
+  su root adm
+  create 640 ulog adm
+  postrotate
+    if [ -d /run/systemd/system ] && command systemctl >/dev/null 2>&1 && systemctl is-active --quiet ulogd2.service; then
+      systemctl kill --kill-who main --signal=SIGHUP ulogd2.service
+    else
+      invoke-rc.d ulogd2 reload > /dev/null
+    fi
+  endscript
+}
+EOF
+
+#####################################################################
+##    FORZAMOS LA ROTACION DE EL SERVICIO DE CORTA FUEGOS          ##
+#####################################################################
+logrotate -d /etc/logrotate.d/ulogd2
+
+#####################################################################
+##              ACTUALIZAMOS LA LISTA DE PAQUETES                  ##
+#####################################################################
+apt update
+
+#####################################################################
+##              ACTUALIZAMOS EL SISTEMA                            ##
+#####################################################################
+apt -yq dist-upgrade
+
+#####################################################################
+##              INSTALAMOS LAS LIBRERIAS DE CORRIDA DE JAVA        ##
+#####################################################################
+apt -yq install default-jre{,-headless}
+
+#####################################################################
+##    CHEQUEAMOS LA VERSION DE LAS LIBRERIAS DE CORRIDA DE JAVA    ##
+#####################################################################
+java -version
+
+#####################################################################
+##        ##
+#####################################################################
+tee -a /etc/environment <<EOF
+JAVA_HOME=/usr/lib/jvm/default-java
+EOF
+
+#####################################################################
+##        ##
+#####################################################################
+source /etc/environment
+
+#####################################################################
+##    CREAMOS UN GRUPO Y UN USUARIO PARA EL SERVICIO DE TOMCAT     ##
+#####################################################################
+groupadd jose
+
+useradd jose -s /usr/sbin/nologin -g jose -d /home/jose
+
+passwd jose
+
+apt -yq install sudo
+
+gpasswd -a jose sudo
+
+#####################################################################
+##              INSTALAMOS EL SERVICIO DE TOMCAT                   ##
+#####################################################################
+apt -yq install tomcat9{,-admin,-examples,-docs}
+
+#####################################################################
+## LE DAMOS ACCESO AL USUARIO PARA GESTIONAR Y ADMINISTRAR EL      ##
+## SERVICIO DE TOMCAT                                              ##
+#####################################################################
+editor /etc/tomcat9/tomcat-users.xml
+<tomcat-users xmlns="http://tomcat.apache.org/xml"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
+              version="1.0">
+  <role rolename="admin-gui"/>
+  <role rolename="manager-gui"/>
+  <user username="jose" password="C0nfS3rv3r" roles="admin-gui,manager-gui"/>
+</tomcat-users>
+
+editor /usr/share/tomcat9-admin/manager/WEB-INF/web.xml
+      <!-- 200MB max -->
+      <max-file-size>209715200</max-file-size>
+      <max-request-size>209715200</max-request-size>
+
+#####################################################################
+##              REINICIAMOS EL SERVICIO DE TOMCAT                  ##
+#####################################################################
+systemctl restart tomcat9
+
+#####################################################################
+##        CONFIGURAMOS EL SERVICIO DE CORTA FUEGOS FOR HTTP(S)     ##
+#####################################################################
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 8080,8443 -m conntrack --ctstate NEW -j NFLOG --nflog-prefix "INPUT:ACCEPT:"
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 8080,8443 -m conntrack --ctstate NEW -m hashlimit --hashlimit-mode srcip,dstip,dstport --hashlimit-upto 200/minute --hashlimit-burst 100 --hashlimit-name LIM_WEB_RQ --hashlimit-htable-expire 15000 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 8080,8443 -m conntrack --ctstate ESTABLISHED -m connlimit --connlimit-saddr --connlimit-upto 100 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 8080,8443 -j DROP
+
+#####################################################################
+##    SALVAMOS LAS CONFIGURACIONES DE EL SERVICIO DE CORTA FUEGOS  ##
+#####################################################################
+iptables-save -f /etc/iptables/rules.v4
+ip6tables-save -f /etc/iptables/rules.v6
+
+#####################################################################
+##        ##
+#####################################################################
+apt -yq install wget gnupg2 lsb-release
+echo "deb [arch=amd64] http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+apt-key export ACCC4CF8 | gpg --dearmour -o /etc/apt/trusted.gpg.d/pgdg.gpg
+apt update
+apt -yq dist-upgrade
+#####################################################################
+##              INSTALAMOS EL SERVICIO POSTGRESQL                  ##
+#####################################################################
+apt -yq install postgresql postgresql-contrib
+
+#####################################################################
+##              CHEQUEAMOS LA VERSION DE EL SERVICIO POSTGRESQL    ##
+#####################################################################
+psql --version
+
+#####################################################################
+##    CAMBIAMOS EL PASSWORD POR DEFECTO DEL SERVICIO POSTGRESQL    ##
+#####################################################################
+su postgres -c "psql"
+
+\password postgres
+
+\q
+
+#####################################################################
+##  ##
+#####################################################################
+apt -yq install curl lsb-release
+curl -fsS https://www.pgadmin.org/static/packages_pgadmin_org.pub | gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg
+sh -c 'echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list'
+apt update
+apt -yq install pgadmin4-web
+bash /usr/pgadmin4/bin/setup-web.sh
+
+#####################################################################
+##        CONFIGURAMOS EL SERVICIO DE CORTA FUEGOS FOR HTTP(S)     ##
+#####################################################################
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 80,443 -m conntrack --ctstate NEW -j NFLOG --nflog-prefix "INPUT:ACCEPT:"
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 80,443 -m conntrack --ctstate NEW -m hashlimit --hashlimit-mode srcip,dstip,dstport --hashlimit-upto 200/minute --hashlimit-burst 100 --hashlimit-name LIM_WEB_RQ --hashlimit-htable-expire 15000 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 80,443 -m conntrack --ctstate ESTABLISHED -m connlimit --connlimit-saddr --connlimit-upto 100 -j ACCEPT
+iptables -A INPUT -p tcp -m tcp -m multiport --dports 80,443 -j DROP
+
+#####################################################################
+##    SALVAMOS LAS CONFIGURACIONES DE EL SERVICIO DE CORTA FUEGOS  ##
+#####################################################################
+iptables-save -f /etc/iptables/rules.v4
+ip6tables-save -f /etc/iptables/rules.v6
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+    Acedemos a la administración de tomcat
+---------------------------------------------------------------------
+w3m http://172.30.0.37/manager/html
+     Usuario: tomcat
+  Contraseña: xxxxxx
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+    Implementacion del Energux
+---------------------------------------------------------------------
+w3m http://172.30.0.37/manager/html
+  1.- Load war file
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+    Creamos una salva del contenedor
+---------------------------------------------------------------------
+vzdump 209 \
+--compress zstd \
+--mode suspend \
+--remove 0 \
+--notes-template '{{cluster}},{{guestname}},{{node}},{{vmid}}' \
+--storage mitrans-cephfs
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+    Restauramos la salva del contenedor
+---------------------------------------------------------------------
+pct restore 209 \
+/mnt/pve/HDD_Local/dump/vzdump-lxc-148-2024_10_16-15_27_02.tar.zst \
+--storage mitrans-zfs
+
+pct restore 209 \
+/mnt/pve/mitrans-cephfs/dump/vzdump-lxc-209-2021_05_17-09_38_22.tar.zst \
+--storage mitrans-ceph
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+

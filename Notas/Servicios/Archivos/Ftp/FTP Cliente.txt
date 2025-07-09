@@ -1,0 +1,11 @@
+# Instalar cliente FTP
+apt -yq install tnftp
+
+# Acceder a un servicio FTP
+ftp remote_hostname
+
+# Como listar el contenido
+ftp> ls
+
+# Como salir
+ftp> bye

@@ -1,0 +1,16 @@
+# Requiere
+- Lighttpd
+- MariaDB
+- Php
+
+# Instalamos el soporte de PHP para lighttpd y MariaDB
+apt -yq install php-cgi php-mysql
+
+# Habilitamos el modulo de PHP para lighttpd
+lighttpd-enable-mod fastcgi-php
+
+# Verificamos la configuración de Lighttpd
+lighttpd -t -f /etc/lighttpd/lighttpd.conf
+
+# Reiniciamos el servicio
+systemctl restart lighttpd

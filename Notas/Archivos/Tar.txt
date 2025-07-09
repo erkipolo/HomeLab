@@ -1,0 +1,8 @@
+# TAR
+apt -yq install tar
+
+# Compress
+tar cvf archivo.tar /archivo/carpeta/*
+
+# Uncompress
+tar xvf archivo.tar

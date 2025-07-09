@@ -1,0 +1,47 @@
+# Instalar servicio
+apt install isc-dhcp-server
+
+#sed -i{,-$(date +"%Y%m%d-%H%M")} '/^INTERFACESv4=""/c INTERFACESv4="eth0"' /etc/default/isc-dhcp-server
+editor /etc/default/isc-dhcp-server
+INTERFACESv4="eth0"
+
+editor /etc/dhcp/dhcpd.conf
+authoritative;
+# tiempo en segundos que dura la configuración por defecto (3600s = 1h)
+default-lease-time 3600
+# tiempo en segundos máximo que dura la configuración (86400s = 24h)
+max-lease-time 86400
+# redes compartidas a configurar
+shared-network aula {
+  # sub red a configurar
+  subnet 10.17.0.0 netmask 255.255.255.0 {
+    # servidores NETBIOS
+    option netbios-name-servers ns.aula.dpvhab.cu;
+    # servidores DNS
+    option domain-name-servers ns.aula.dpvhab.cu;
+    # nombre del dominio
+    option domain-name "aula.dpvhab.cu";
+    # puerta de enlace por defecto
+    option routers gw.aula.dpvhab.cu;
+
+    # declaracion de equipo (se recomienda usar el propietario del equipo)
+    host pc01 {
+      # nombre del equipo
+      option host-name "pc01.aula.dpvhab.cu";
+      # identificación fisica de la red del equipo
+      hardware ethernet 00:01:6c:d7:b1:aa;
+      # dirección asignada
+      fixed-address 10.17.0.30;
+    }
+  }
+}
+
+# verificar la sintaxis
+dhcpd -4 -t -cf /etc/dhcp/dhcpd.conf
+
+# reinicio del servicio
+systemctl restart isc-dhcp-server
+
+# estado del servicio
+systemctl status isc-dhcp-server
+
