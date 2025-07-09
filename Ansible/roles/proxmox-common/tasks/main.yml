@@ -40,3 +40,44 @@
   ansible.builtin.get_url:
     url: "http://download.proxmox.com/images/system/{{ ostemplate_name }}"
     dest: "/var/lib/vz/template/cache/{{ ostemplate_name}}"
+
+- name: Create a user Terraform
+  ansible.builtin.lineinfile:
+    dest: /etc/pve/user.cfg
+    regexp: ’^user\:Terraform’
+    line: 'user:Terraform@pam:1:0::::::'
+
+- name: Add group for Terraform if not exists and assigned to the user of Terraform
+  ansible.builtin.lineinfile:
+    dest: /etc/pve/user.cfg
+    regexp: ’^group\:Terraform’
+    line: 'group:Terraform:Terraform@pam::'
+
+- name: Add rol for Terraform if not exists
+  ansible.builtin.lineinfile:
+    dest: /etc/pve/user.cfg
+    regexp: ’^role\:Terraform’
+    line: 'role:Terraform:Datastore.AllocateSpace,Datastore.Audit,Pool.Allocate,SDN.Use,Sys.Audit,Sys.Console,Sys.Modify,Sys.PowerMgmt,VM.Allocate,VM.Audit,VM.Clone,VM.Config.CDROM,VM.Config.CPU,VM.Config.Cloudinit,VM.Config.Disk,VM.Config.HWType,VM.Config.Memory,VM.Config.Network,VM.Config.Options,VM.Migrate,VM.Monitor,VM.PowerMgmt:'
+
+- name: Assign rol Terraform to the group of Terraform
+  ansible.builtin.lineinfile:
+    dest: /etc/pve/user.cfg
+    regexp: ’\@Terraform\:Terraform’
+    line: 'acl:100:/:@Terraform:Terraform:'
+
+#- name: Create rol for Terraform
+#  ansible.builtin.command:
+#    cmd: pveum role add Terraform -privs "Datastore.AllocateSpace, Datastore.Audit, Pool.Allocate, SDN.Use, Sys.Audit, Sys.Console, Sys.Modify, Sys.PowerMgmt, VM.Allocate, VM.Audit, VM.Clone, VM.Config.CDROM, VM.Config.CPU, VM.Config.Cloudinit, VM.Config.Disk, VM.Config.HWType, VM.Config.Memory, VM.Config.Network, VM.Config.Options, VM.Migrate, VM.Monitor, VM.PowerMgmt"
+
+#- name: Create group for Terraform
+#  ansible.builtin.command:
+#    cmd: pveum group add Terraform
+
+#- name: Assign rol Terraform to the group of Terraform
+#  ansible.builtin.command:
+#    cmd: pveum aclmod / -group Terraform -role Terraform
+
+#- name: Create a user Terraform and assigned to the group of Terraform
+#  ansible.builtin.command:
+#    cmd: pveum user add Terraform@pam -group Terraform
+
