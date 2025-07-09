@@ -1,0 +1,6 @@
+---
+- name: Add homelab repos hostname
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    regexp: ’^192\.168\.56\.105’
+    line: 192.168.56.1 deb.debian.org security.debian.org download.proxmox.com

@@ -4,6 +4,11 @@ acquire::https::proxy "http://localhost:3128/";
 acquire::http::proxy  "http://localhost:3128/";
 EOF
 
+# Apt no check valid date
+tee -a /etc/apt/apt.conf <<EOF
+acquire::check-valid-until "0";
+EOF
+
 # Borramos la cache
 apt clean
 

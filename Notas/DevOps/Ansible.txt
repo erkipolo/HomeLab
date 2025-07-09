@@ -1,0 +1,131 @@
+# Working with proxmox servers
+
+# Install the ssh client on debian and ubuntu
+laptop:~$ sudo apt -yq install openssh-client
+
+# Create a ssh key pair to use with ansible without passphrase an save it with the name ansible_key
+laptop:~$ ssh-keygen -t ed25519 -b 4096 -C "ansible"
+
+# Copy the ansible key to each proxmox that we would manage with ansible
+laptop:~$ ssh-copy-id -i $HOME/.ssh/homelab_ansible_key.pub root@192.168.56.105
+
+# Install ansible on debian and ubuntu
+laptop:~$ sudo apt -yq install ansible sshpass
+
+# Directory Layout (Best Practices)
+laptop:~$  touch ansible.cfg stage.yml site.yml
+laptop:~$  mkdir -p {group_vars,host_vars}/
+laptop:~$  mkdir -p roles/{proxmox-common,proxmox}/{tasks,handlers,templates,files,vars,meta}
+laptop:~$  touch roles/{proxmox-common,proxmox}/{tasks,handlers,vars,meta}/main.yml
+
+# Inventory Stage vs Production (Best Practices)
+laptop:~$ tee stage.yml <<EOF
+homelab_proxmoxs:
+  hosts:
+    192.168.56.105
+proxmoxs:
+  children: homelab_proxmoxs
+homelab:
+  children: homelab_proxmoxs
+  vars:
+    url_download_template_CT: 'http://192.168.56.1/extras/'
+    dest_download_template_CT: '/var/lib/vz/template/cache/'
+    name_template_CT: 'debian-12-standard_12.7-1_amd64.tar.zst'
+EOF
+
+# Ansible config file (for stage inventory)
+laptop:~$ tee ansible.cfg <<EOF
+[defaults]
+inventory = stage.yml
+private_key_file = ~/.ssh/homelab_ansible_key
+EOF
+
+# Check if we has access to all the servers that are on my list of hosts file using the configuration file 'ansible.cfg'
+laptop:~$ ansible all --user root -m ping
+laptop:~$ ansible all -u root -m ping
+
+# How to get information from your servers
+laptop:~$ ansible all -u root -m gather_facts --limit 192.168.56.105
+
+# How to show the list of are hosts
+laptop:~$ ansible all --list-hosts
+
+# =========== Top Level Playbooks Are Separated By Role (Best Practices) ===========
+laptop:~$ tee site.yml <<EOF
+---
+- hosts: proxmoxs
+  roles:
+    - proxmox-common
+EOF
+
+laptop:~$ tee roles/proxmox-common/templates/apt.conf.j2 <<EOF
+acquire::check-valid-until "0";
+EOF
+
+laptop:~$ tee roles/proxmox-common/templates/sources.list.j2 <<EOF
+deb http://192.168.56.1/debian stable contrib main non-free non-free-firmware
+deb http://192.168.56.1/debian stable-updates contrib main non-free non-free-firmware
+deb http://192.168.56.1/debian-security/ stable-security contrib main non-free non-free-firmware
+EOF
+
+laptop:~$ tee roles/proxmox-common/templates/ceph.list.j2 <<EOF
+#deb https://enterprise.proxmox.com/debian/ceph-quincy bookworm enterprise
+EOF
+
+laptop:~$ tee roles/proxmox-common/templates/pve-enterprise.list.j2 <<EOF
+#deb https://enterprise.proxmox.com/debian/pve bookworm pve-enterprise
+EOF
+
+laptop:~$ tee roles/proxmox-common/templates/pve-no-subscription.list.j2 <<EOF
+deb http://192.168.56.1/proxmox/debian/pve bookworm pve-no-subscription
+EOF
+
+laptop:~$ tee roles/proxmox-common/tasks/main.yml <<EOF
+---
+- name: Copy template of APT config file
+  ansible.builtin.template:
+    src: apt.conf.j2
+    dest: /etc/apt/apt.conf
+
+- name: Copy template of sources.list config file
+  ansible.builtin.template:
+    src: sources.list.j2
+    dest: /etc/apt/sources.list
+
+- name: Copy template of ceph.list config file
+  ansible.builtin.template:
+    src: ceph.list.j2
+    dest: /etc/apt/sources.list.d/ceph.list
+
+- name: Copy template of pve-enterprise.list config file
+  ansible.builtin.template:
+    src: pve-enterprise.list.j2
+    dest: /etc/apt/sources.list.d/pve-enterprise.list
+
+- name: Copy template of pve-no-subscription.list config file
+  ansible.builtin.template:
+    src: pve-no-subscription.list.j2
+    dest: /etc/apt/sources.list.d/pve-no-subscription.list
+
+- name: update repository index and upgrade the system
+  ansible.builtin.apt:
+    update_cache: yes
+    upgrade: yes
+
+- name: install some tools (vim-nox, tmux)
+  ansible.builtin.apt:
+    name:
+      - vim-nox
+      - tmux
+    state: present
+
+- name: Download new CT template
+  ansible.builtin.get_url:
+    url: "{{ url_download_template_CT }}{{ name_template_CT }}"
+    dest: "{{ dest_download_template_CT }}{{ name_template_CT}}"
+EOF
+
+laptop:~$ ansible-playbook --syntax-check site.yml
+
+laptop:~$ ansible-playbook -u root site.yml
+
