@@ -225,13 +225,55 @@ pct restore 700 \
 /var/lib/vz/dump/vzdump-lxc-901-2024_02_29-16_54_38.tar.zst \
 --storage local-lvm
 
-#  Nota: restaurar desde el PBS
+# Nota: restaurar desde el PBS
 pct restore 284 \
 pbs-salva:backup/ct/284/2024-06-23T13:49:46Z \
 -storage mitrans-zfs
 
-#  Nota: si dice almacenamiento insuficiente ajuste el tamaño del CT
+# Nota: si dice almacenamiento insuficiente ajuste el tamaño del CT
 pct restore 300 \
 /mnt/pve/mitrans-cephfs/dump/vzdump-lxc-120-2024_06_05-02_03_54.tar.zst \
 --storage mitrans-ceph \
 --rootfs mitrans-ceph:60
+
+# Note: Before to add conection to proxmox, you need an API token from proxmox:
+1)
+  GUI:
+    Datacenter -> Permissions -> Roles -> Create
+      name = terraform
+      privileges = Datastore.AllocateSpace, Datastore.Audit, Pool.Allocate, SDN.Use, Sys.Audit, Sys.Console, Sys.Modify, Sys.PowerMgmt, VM.Allocate, VM.Audit, VM.Clone, VM.Config.CDROM, VM.Config.CPU, VM.Config.Cloudinit, VM.Config.Disk, VM.Config.HWType, VM.Config.Memory, VM.Config.Network, VM.Config.Options, VM.Migrate, VM.Monitor, VM.PowerMgmt
+  CLI:
+    pveum role add TestTerraform -privs "Datastore.AllocateSpace, Datastore.Audit, Pool.Allocate, SDN.Use, Sys.Audit, Sys.Console, Sys.Modify, Sys.PowerMgmt, VM.Allocate, VM.Audit, VM.Clone, VM.Config.CDROM, VM.Config.CPU, VM.Config.Cloudinit, VM.Config.Disk, VM.Config.HWType, VM.Config.Memory, VM.Config.Network, VM.Config.Options, VM.Migrate, VM.Monitor, VM.PowerMgmt"
+
+2)
+  GUI:
+    Datacenter -> Permissions -> Groups -> Create
+      name = terraform
+  CLI:
+    pveum group add TestTerraform
+
+3)
+  GUI:
+    Datacenter -> Permissions -> Add -> Group Permissions
+      Path = /
+      Group = terraform
+      Role = terraform
+  CLI:
+    pveum aclmod / -group TestTerraform -role TestTerraform
+
+4)
+  GUI:
+    Datacenter -> Permissions -> Users -> Add
+      username = terraform
+      group = terraform
+  CLI:
+    pveum user add TestTerraform@pam -group TestTerraform
+
+5)
+  GUI:
+    Datacenter -> Permissions -> API Tokens -> Add
+      user = terraform@pam
+      TokenID = terraform
+      Privilege Separation = disable
+  CLI:
+    ????
