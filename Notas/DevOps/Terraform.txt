@@ -1,9 +1,20 @@
 Note: Only this part need a proxy
 laptop:~$ https="http://127.0.0.1:8081/" terraform init
 
+Nota: hay qe ponerlas cada ves que vas ha trabajar
 laptop:~$ export PM_API_TOKEN_ID='Terraform@pam!Terraform'
 laptop:~$ export PM_API_TOKEN_SECRET="17066356-05f9-48c0-9c90-7f0aa09c86e0"
 laptop:~$ export PM_API_URL="https://192.168.56.105:8006/api2/json"
+
+Nota: Para ponerlas una sola ves (Persistentes)
+laptop:~$ tee -a ~/.bashrc <<EOF
+PM_API_TOKEN_ID='Terraform@pam!Terraform'
+PM_API_TOKEN_SECRET="17066356-05f9-48c0-9c90-7f0aa09c86e0"
+PM_API_URL="https://192.168.56.105:8006/api2/json"
+EOF
+
+Nota; recargar las variables de entorno sin reiniciar
+laptop:~$ source ~/.bashrc
 
 laptop:~$ tee required.tf <<EOF
 terraform {
