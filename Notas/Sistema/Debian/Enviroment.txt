@@ -1,0 +1,4 @@
+export PM_API_TOKEN_ID='Terraform@pam!Terraform'
+export PM_API_TOKEN_SECRET="17066356-05f9-48c0-9c90-7f0aa09c86e0"
+export PM_API_URL="https://192.168.56.105:8006/api2/json"
+
