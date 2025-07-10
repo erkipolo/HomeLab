@@ -1,0 +1,93 @@
+Note: Only this part need a proxy
+laptop:~$ https="http://127.0.0.1:8081/" terraform init
+
+laptop:~$ export PM_API_TOKEN_ID='Terraform@pam!Terraform'
+laptop:~$ export PM_API_TOKEN_SECRET="17066356-05f9-48c0-9c90-7f0aa09c86e0"
+laptop:~$ export PM_API_URL="https://192.168.56.105:8006/api2/json"
+
+laptop:~$ tee required.tf <<EOF
+terraform {
+  required_providers {
+    proxmox = {
+      source = "registry.terraform.io/bpg/proxmox"
+      source = "registry.terraform.io/telmate/proxmox"
+    }
+  }
+}
+EOF
+
+laptop:~$ tee connection.tf <<EOF
+provider "proxmox" {
+  pm_tls_insecure = true # By default Proxmox Virtual Environment uses self-signed certificates.
+}
+EOF
+
+laptop:~$ tee stage.tf <<EOF
+resource "proxmox_lxc" "ct-test" {
+  cores           = 1
+  hostname        = "homelab-lxc-tf-docker0"
+  memory          = 512
+  nameserver      = "192.168.56.1"
+  onboot          = true
+  ostemplate      = "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"
+  password        = "C0nfS3rv3r"
+  searchdomain    = "homelab.cu"
+  ssh_public_keys = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIAuYvTBdwbsWoVKwMstwULBgy0/hdkrphgiVyU75rBc ansible"
+  start           = true
+  swap            = 512
+  target_node     = "pve"
+  unprivileged    = true
+  vmid            = 100
+  features {
+    nesting = true
+  }
+  mountpoint {
+    key     = "0"
+    mp      = "/var/www/html/"
+    size    = "2G"
+    slot    = 0
+    storage = "local-lvm"
+  }
+  network {
+    bridge   = "vmbr0"
+    firewall = true
+    gw       = "192.168.56.1"
+    ip       = "192.168.56.40/24"
+    name     = "eth0"
+  }
+  network {
+    bridge   = "vmbr0"
+    firewall = true
+    ip       = "192.168.56.41/24"
+    name     = "eth1"
+  }
+  network {
+    bridge   = "vmbr0"
+    firewall = true
+    ip       = "dhcp"
+    name     = "eth3"
+  }
+  rootfs {
+    size    = "2G"
+    storage = "local-lvm"
+  }
+}
+EOF
+
+# formatear los archivos correctamente
+laptop:~$ terraform fmt
+
+# validar la configuracion
+laptop:~$ terraform validate
+
+# preview the changes
+laptop:~$ terraform plan
+
+# Apply the plan
+laptop:~$ terraform apply
+
+# Destroy the plan
+laptop:~$ terraform destroy
+
+# Exec part of config
+laptop:~$ terraform apply -target='proxmox_lxc.ct-test'
