@@ -1,46 +1,28 @@
 resource "proxmox_lxc" "ct-test" {
-  cores           = 1
-  hostname        = "homelab-lxc-tf-docker0"
-  memory          = 512
-  nameserver      = "192.168.56.1"
+  count           = 4
+  cores           = var.cores
+  hostname        = "${var.ct-name}-${var.initial_id + count.index + 1}"
+  memory          = var.memory
+  nameserver      = "${var.dns_servers}"
   onboot          = true
-  ostemplate      = "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"
-  password        = "C0nfS3rv3r"
-  searchdomain    = "homelab.cu"
+  ostemplate      = "local:vztmpl/${var.ostemplate}"
+  password        = "${var.root_pass}"
+  searchdomain    = "${var.search_domain}"
   ssh_public_keys = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIAuYvTBdwbsWoVKwMstwULBgy0/hdkrphgiVyU75rBc ansible"
   start           = true
-  swap            = 512
-  target_node     = "pve"
+  swap            = var.swap
+  target_node     = "${var.node_name}"
   unprivileged    = true
-  vmid            = 100
+  vmid            = var.initial_id + count.index + 1
   features {
     nesting = true
-  }
-  mountpoint {
-    key     = "0"
-    mp      = "/var/www/html/"
-    size    = "2G"
-    slot    = 0
-    storage = "local-lvm"
   }
   network {
     bridge   = "vmbr0"
     firewall = true
     gw       = "192.168.56.1"
-    ip       = "192.168.56.40/24"
+    ip       = "${var.private_subnet}${var.initial_ip + count.index + 1}${var.private_subnet_mask}"
     name     = "eth0"
-  }
-  network {
-    bridge   = "vmbr0"
-    firewall = true
-    ip       = "192.168.56.41/24"
-    name     = "eth1"
-  }
-  network {
-    bridge   = "vmbr0"
-    firewall = true
-    ip       = "dhcp"
-    name     = "eth3"
   }
   rootfs {
     size    = "2G"
