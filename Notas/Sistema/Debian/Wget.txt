@@ -1,0 +1,6 @@
+# How to use proxy on wget
+tee -a ~/.wgetrc <<EOF
+use_proxy = on
+http_proxy = http://127.0.0.1:8081/
+https_proxy = http://127.0.0.1:8081/
+EOF
