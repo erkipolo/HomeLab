@@ -12,6 +12,11 @@ tee -a /etc/apt/apt.conf <<EOF
 acquire::check-valid-until "0";
 EOF
 
+# Enable method FTP
+tee -a /etc/apt/apt.conf <<EOF
+dir::bin::methods::ftp "ftp";
+EOF
+
 # Borramos la cache
 apt clean
 
