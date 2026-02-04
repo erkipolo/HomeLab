@@ -1,0 +1,47 @@
+---
+
+- name: homelab servers config
+  tags: homelab
+  hosts:
+    - servers
+    - proxmoxs
+  roles:
+    - homelab/repositories/debian
+
+- name: homelab proxmoxs config
+  tags: homelab
+  hosts:
+    - proxmoxs
+  roles:
+    - homelab/repositories/proxmox
+
+- name: homelab repositories date valid
+  tags: homelab
+  hosts:
+    - servers
+    - proxmoxs
+  roles:
+    - homelab/repositories/date
+
+- name: debian repositories
+  tags: homelab
+  hosts:
+    - servers
+    - proxmoxs
+  roles:
+    - repositories/debian
+
+- name: proxmox repositories
+  tags: homelab
+  hosts:
+    - proxmoxs
+  roles:
+    - repositories/proxmox
+
+- name: upgrade distribution
+  tags: homelab
+  hosts:
+    - servers
+    - proxmoxs
+  roles:
+    - repositories/upgrade

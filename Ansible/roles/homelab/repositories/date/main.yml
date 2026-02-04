@@ -1,0 +1,9 @@
+- name: Copy APT date config file
+  tags: HomeLab
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      acquire::check-valid-until "0";
