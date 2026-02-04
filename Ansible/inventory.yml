@@ -2,13 +2,18 @@ all:
   children:
     homelab:
       hosts:
-        server:
-          ansible_host: 192.168.56.5
+        laptop:
+          ansible_host: 192.168.56.1
+        srv01:
+          ansible_host: 192.168.56.2
         pve:
           ansible_host: 192.168.56.9
+    clients:
+      hosts:
+        laptop:
     servers:
       hosts:
-        server:
+        srv01:
     proxmoxs:
       hosts:
         pve:
