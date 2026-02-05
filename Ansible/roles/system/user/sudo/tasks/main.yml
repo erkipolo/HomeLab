@@ -1,0 +1,26 @@
+- name: Install sudo
+  ansible.builtin.apt:
+    name:
+      - sudo
+    state: latest
+
+- name: Create new user
+  ansible.builtin.user:
+    name: "{{ SUDO_USER_NAME }}"
+    password: "{{ SUDO_USER_PASS }}"
+    state: present
+    createhome: yes
+    shell: /bin/bash
+
+- name: Add new user public key 
+  ansible.builtin.authorized_key:
+    user: "{{ SUDO_USER_NAME }}"
+    key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
+    state: present
+
+- name: Add new user to sudo group
+  ansible.builtin.blockinfile:
+    path: /etc/sudoers.d/{{ SUDO_USER_NAME }}
+    create: yes
+    block: |
+      {{ SUDO_USER_NAME}} ALL=(ALL:ALL) ALL

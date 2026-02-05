@@ -23,6 +23,8 @@
     - repositories/date
     - repositories/debian
     - repositories/upgrade/manual
+    - system/user/sudo
+    - security/cryptographic/ssh
     - security/upgrade/unattended
     - security/hips/fail2ban/init
     - security/monitoring/snmpd
