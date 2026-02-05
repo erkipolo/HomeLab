@@ -1,10 +1,11 @@
 # Config Debian Repositories
 - name: Delete enterprise proxmox config file
+  tags: Repositories
   ansible.builtin.file:
-      path: "{{ item }}"
-      state: absent
+    path: "{{ item }}"
+    state: absent
   loop:
-     - /etc/apt/sources.list.d/pve-enterprise.sources
+    - /etc/apt/sources.list.d/pve-enterprise.sources
 
 - name: Add proxmox main repositories
   tags: Repositories

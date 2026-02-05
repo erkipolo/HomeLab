@@ -1,5 +1,5 @@
 - name: Copy APT date config file
-  tags: HomeLab
+  tags: homelab
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf
     owner: root

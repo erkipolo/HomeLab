@@ -1,0 +1,6 @@
+- name: Add proxmox repositories URL to hosts
+  tags: homelab
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    regexp: '{{ proxmox_self_hosted_find }}'
+    line: "{{ proxmox_self_hosted_hosts }}"

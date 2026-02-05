@@ -12,8 +12,16 @@ all:
       hosts:
         laptop:
     servers:
+      vars:
+        debian_self_hosted_find:  '^192\.168\.56\.1 deb'
+        debian_self_hosted_hosts: '192.168.56.1 deb.debian.org security.debian.org'
       hosts:
         srv01:
     proxmoxs:
+      vars:
+        debian_self_hosted_find:   '^192\.168\.56\.1 deb'
+        debian_self_hosted_hosts:  '192.168.56.1 deb.debian.org security.debian.org'
+        proxmox_self_hosted_find:  '^192\.168\.56\.1 dow'
+        proxmox_self_hosted_hosts: '192.168.56.1 download.proxmox.com'
       hosts:
         pve:
