@@ -25,6 +25,6 @@
     - security/firewall/iptables/init/hosts
     - security/hips/fail2ban/init
     - services/send-only/postfix/enable
-    - repositories/upgrade/email-notification
-    - security/hips/fail2ban/email-notification
+    - notification/repositories/upgrade
+    - notification/hips/fail2ban
 
