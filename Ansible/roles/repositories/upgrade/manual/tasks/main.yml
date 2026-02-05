@@ -1,5 +1,4 @@
 - name: Update and Upgrade System
-  tags: Upgrade
   ansible.builtin.apt:
     update_cache: yes
     upgrade: yes

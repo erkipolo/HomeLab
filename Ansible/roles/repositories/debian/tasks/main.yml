@@ -7,7 +7,6 @@
     - /etc/apt/sources.list
 
 - name: Add debian main repositories
-  tags: Repositories
   ansible.builtin.deb822_repository:
     name: debian
     types: deb
@@ -23,7 +22,6 @@
     state: present
 
 - name: Add debian security repositories
-  tags: Repositories
   ansible.builtin.deb822_repository:
     name: security
     types: deb

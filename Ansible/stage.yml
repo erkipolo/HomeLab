@@ -1,47 +1,23 @@
 ---
 
-- name: config debian repositories self-hosted
-  tags: self-hosted
-  hosts:
-    - servers
-  roles:
-    - self-hosted/repositories/debian
-
-- name: config proxmox repositories self-hosted
-  tags: self-hosted
+- name: config proxmoxs servers
   hosts:
     - proxmoxs
   roles:
     - self-hosted/repositories/proxmox
-
-- name: repositories self-hosted check date valid until
-  tags: self-hosted
-  hosts:
-    - servers
-    - proxmoxs
-  roles:
-    - repositories/date
-
-- name: debian repositories
-  tags: repositories
-  hosts:
-    - servers
-  roles:
-    - repositories/debian
-
-- name: proxmox repositories
-  tags: repositories
-  hosts:
-    - proxmoxs
-  roles:
     - repositories/proxmox
+    - self-hosted/repositories/debian
+    - repositories/date
+    - repositories/debian
+    - repositories/upgrade/manual
 
-- name: upgrade distribution
-  tags: upgrade
+- name: config debians servers
   hosts:
     - servers
-    - proxmoxs
   roles:
-    - repositories/upgrade
-
-
+    - self-hosted/repositories/debian
+    - repositories/date
+    - repositories/debian
+    - repositories/upgrade/manual
+    - security/system/sysctl/hosts
+    - security/firewall/iptables/init/hosts

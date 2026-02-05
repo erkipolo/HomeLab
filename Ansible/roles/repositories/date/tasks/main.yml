@@ -1,5 +1,4 @@
-- name: Copy APT date config file
-  tags: homelab
+- name: config repositories self-hosted check date valid until
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf
     owner: root
