@@ -4,7 +4,7 @@
       - unattended-upgrades
     state: latest
 
-- name: Setting what to unattended upgrades
+- name: Setting what and when to unattended upgrades
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/52unattended-upgrades-local
     owner: root
@@ -19,6 +19,13 @@
       };
       Unattended-Upgrade::Package-Blacklist {
       };
+      Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+      Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+      Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+      Unattended-Upgrade::Remove-Unused-Dependencies "true";
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "04:00";
   notify: restart_unattended
 
 - name: Config unattended upgrades log
