@@ -1,4 +1,4 @@
-- name: Instalar fail2ban
+- name: Install fail2ban
   ansible.builtin.apt:
     name:
       - fail2ban
@@ -55,7 +55,7 @@
         endscript
       }
 
-- name: Enable SSH brotection for brute force
+- name: Enable SSH protection for brute force
   ansible.builtin.lineinfile:
     path: /etc/fail2ban/jail.local
     insertafter: '^\[sshd\]'

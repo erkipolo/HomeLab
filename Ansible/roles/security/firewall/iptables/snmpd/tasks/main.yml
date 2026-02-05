@@ -1,0 +1,20 @@
+- name: ACCEPT INPUT SNMP IPv4
+  tags: snmpd
+  ansible.builtin.iptables:
+    table: filter
+    chain: INPUT
+    chain_management: true
+    state: present
+    action: append
+    protocol: udp
+    destination_port: 161
+    source: '{{ item }}'
+    ctstate: NEW
+    jump: ACCEPT
+    comment: 'SNMP'
+    ip_version: ipv4
+  loop:
+    - '{{ SNMP_CIDR_1 }}'
+    - '{{ SNMP_CIDR_2 }}'
+    - '{{ SNMP_CIDR_3 }}'
+  notify: save_rules

@@ -1,0 +1,20 @@
+- name: Install SNMP
+  ansible.builtin.apt:
+    name:
+      - snmpd
+    state: latest
+
+- name: Enable SNMP Interfaces Access
+  ansible.builtin.copy:
+    dest: /etc/snmp/snmpd.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      sysLocation   {{ ansible_fqdn }}
+      sysContact    {{ EMAIL_NOTIFICATION }}
+      agentaddress  udp:0.0.0.0:161,udp6:[::]:161
+      view          all included .1
+      rocommunity   {{ SNMP_COMMUNITY }} default -V all
+      rocommunity6  {{ SNMP_COMMUNITY }} default -V all
+  notify: restart_snmpd

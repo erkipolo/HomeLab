@@ -10,7 +10,10 @@
     - repositories/date
     - repositories/debian
     - repositories/upgrade/manual
-    - repositories/upgrade/unattended
+    - security/upgrade/unattended
+    - security/hips/fail2ban/init
+    - security/monitoring/snmpd
+    - security/monitoring/monit
 
 - name: config debians servers
   hosts:
@@ -20,11 +23,15 @@
     - repositories/date
     - repositories/debian
     - repositories/upgrade/manual
-    - repositories/upgrade/unattended
+    - security/upgrade/unattended
+    - security/hips/fail2ban/init
+    - security/monitoring/snmpd
+    - security/monitoring/monit
     - security/system/sysctl/hosts
     - security/firewall/iptables/init/hosts
-    - security/hips/fail2ban/init
+    - security/firewall/iptables/snmpd
     - services/send-only/postfix/enable
-    - notification/repositories/upgrade
+    - notification/upgrade/unattended
     - notification/hips/fail2ban
+    - notification/monitoring/monit
 

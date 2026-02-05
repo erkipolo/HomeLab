@@ -1,0 +1,13 @@
+- name: Set the mail server
+  ansible.builtin.lineinfile:
+    dest: /etc/monit/monitrc
+    regexp: "^set mailserver "
+    line: 'set mailserver localhost'
+  notify: restart_monit
+
+- name: Set email notification
+  ansible.builtin.lineinfile:
+    dest: /etc/monit/monitrc
+    regexp: "^set alert "
+    line: 'set alert {{ EMAIL_NOTIFICATION }}'
+  notify: restart_monit
