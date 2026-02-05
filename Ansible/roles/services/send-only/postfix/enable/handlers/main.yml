@@ -1,0 +1,10 @@
+- name: restart_aliases
+  ansible.builtin.shell: |
+    newaliases
+
+- name: restart_postfix
+  ansible.builtin.systemd_service:
+    name: postfix
+    masked: no
+    enabled: true
+    state: restarted

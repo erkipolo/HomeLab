@@ -2,7 +2,7 @@
   tags: Firewall
   ansible.builtin.apt:
     name: iptables-persistent
-    state: present
+    state: latest
 
 - name: ACCEPT INPUT ESTABLISHED,RELATED
   tags: Firewall

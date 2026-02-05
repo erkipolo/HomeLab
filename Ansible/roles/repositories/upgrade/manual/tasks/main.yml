@@ -1,5 +1,6 @@
 - name: Update and Upgrade System
   ansible.builtin.apt:
+    upgrade: dist
     update_cache: yes
-    upgrade: yes
     cache_valid_time: 0
+    state: latest

@@ -19,5 +19,8 @@
     - repositories/date
     - repositories/debian
     - repositories/upgrade/manual
+    - repositories/upgrade/unattended
     - security/system/sysctl/hosts
     - security/firewall/iptables/init/hosts
+    - services/send-only/postfix/enable
+

@@ -1,6 +1,6 @@
 all:
   children:
-    self-hosted:
+    self_hosted:
       vars:
         debian_self_hosted_find:   '^192\.168\.56\.1 deb'
         debian_self_hosted_hosts:  '192.168.56.1 deb.debian.org security.debian.org'
@@ -9,6 +9,7 @@ all:
         ADMIN_CIDR_1: '192.168.56.1/32'
         ADMIN_CIDR_2: '192.168.56.1/32'
         ADMIN_CIDR_3: '192.168.56.1/32'
+        EMAIL_NOTIFICATION: 'admin1@homelab.cu'
       hosts:
         laptop:
           ansible_host: 192.168.56.1
