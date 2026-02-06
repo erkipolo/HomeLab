@@ -7,7 +7,7 @@
 - name: Create new user
   ansible.builtin.user:
     name: "{{ SUDO_USER_NAME }}"
-    password: "{{ SUDO_USER_PASS }}"
+    password: "{{ lookup('file', SUDO_USER_PASS) }}"
     state: present
     createhome: yes
     shell: /bin/bash
