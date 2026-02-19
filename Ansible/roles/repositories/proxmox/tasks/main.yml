@@ -1,5 +1,6 @@
 # Config Debian Repositories
 - name: Delete enterprise proxmox config file
+  tags: Repositories
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
@@ -7,6 +8,7 @@
     - /etc/apt/sources.list.d/pve-enterprise.sources
 
 - name: Add proxmox main repositories
+  tags: Repositories
   ansible.builtin.deb822_repository:
     name: proxmox
     types: deb
@@ -20,6 +22,7 @@
     state: present
 
 - name: Add proxmox ceph repositories
+  tags: Repositories
   ansible.builtin.deb822_repository:
     name: ceph
     types: deb

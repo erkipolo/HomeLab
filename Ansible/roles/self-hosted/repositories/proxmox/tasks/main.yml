@@ -1,4 +1,5 @@
 - name: Add proxmox repositories URL to hosts
+  tags: SelfHosted
   ansible.builtin.lineinfile:
     dest: /etc/hosts
     regexp: '{{ proxmox_self_hosted_find }}'

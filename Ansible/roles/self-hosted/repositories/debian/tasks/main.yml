@@ -1,4 +1,5 @@
 - name: Add debian repositories URL to hosts
+  tags: SelfHosted
   ansible.builtin.lineinfile:
     dest: /etc/hosts
     regexp: '{{ debian_self_hosted_find }}'

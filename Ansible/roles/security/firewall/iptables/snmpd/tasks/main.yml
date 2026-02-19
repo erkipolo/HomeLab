@@ -1,5 +1,5 @@
 - name: ACCEPT INPUT SNMP IPv4
-  tags: snmpd
+  tags: IptablesSNMP
   ansible.builtin.iptables:
     table: filter
     chain: INPUT

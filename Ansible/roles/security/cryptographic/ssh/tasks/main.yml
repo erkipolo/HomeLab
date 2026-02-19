@@ -1,4 +1,5 @@
-- name: Hardening SSH service
+- name: Secure SSH service
+  tags: SecureSHH
   ansible.builtin.blockinfile:
     path: /etc/ssh/sshd_config.d/SecureSSH.conf
     create: yes

@@ -1,4 +1,5 @@
 - name: Install postfix, ssl-cert and bsd-mailx
+  tags: SendOnlyPostfix
   ansible.builtin.apt:
     name:
       - ssl-cert
@@ -7,6 +8,7 @@
     state: latest
 
 - name: Config aliases
+  tags: SendOnlyPostfix
   ansible.builtin.copy:
     dest: /etc/aliases
     owner: root
@@ -19,6 +21,7 @@
   notify: restart_aliases
 
 - name: Setting mail name
+  tags: SendOnlyPostfix
   ansible.builtin.copy:
     dest: /etc/mailname
     owner: root
@@ -28,6 +31,7 @@
       {{ ansible_fqdn }}
 
 - name: Config domain origin
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^myorigin ="
@@ -35,6 +39,7 @@
   notify: restart_postfix
 
 - name: Config domain name
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^mydomain ="
@@ -42,6 +47,7 @@
   notify: restart_postfix
 
 - name: Config host name
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^myhostname ="
@@ -49,6 +55,7 @@
   notify: restart_postfix
 
 - name: Config destination domains
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^mydestination ="
@@ -56,6 +63,7 @@
   notify: restart_postfix
 
 - name: Config to listen only on localhost
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^inet_interfaces ="
@@ -63,6 +71,7 @@
   notify: restart_postfix
 
 - name: Enable postfix log
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^maillog_file ="
@@ -70,6 +79,7 @@
   notify: restart_postfix
 
 - name: Config postfix log rotation
+  tags: SendOnlyPostfix
   ansible.builtin.copy:
     dest: /etc/logrotate.d/postfix
     owner: root
@@ -95,6 +105,7 @@
       }
 
 - name: Fix compatibility level
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^compatibility_level ="
@@ -102,6 +113,7 @@
   notify: restart_postfix
 
 - name: Secure banner message
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^smtpd_banner ="
@@ -109,6 +121,7 @@
   notify: restart_postfix
 
 - name: Setting certificate for TLS client connections
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^smtp_tls_CAfile ="
@@ -116,6 +129,7 @@
   notify: restart_postfix
 
 - name: Enable TLS client connections
+  tags: SendOnlyPostfix
   ansible.builtin.lineinfile:
     dest: /etc/postfix/main.cf
     regexp: "^smtp_tls_security_level ="

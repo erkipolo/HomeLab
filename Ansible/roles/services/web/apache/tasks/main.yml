@@ -1,0 +1,72 @@
+- name: Install apache and ssl-cert
+  tags: Apache
+  ansible.builtin.apt:
+    name:
+      - apache2
+      - ssl-cert
+    state: latest
+
+- name: Config apache log rotation
+  tags: Apache
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/apache2
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      /var/log/apache2/*.log
+      {
+        daily
+        dateext
+        dateformat -%Y%m%d%H%M
+        missingok
+        rotate 365
+        compress
+        create 640 root adm
+        sharedscripts
+        prerotate
+          if [ -d /etc/logrotate.d/httpd-prerotate ]; then
+            run-parts /etc/logrotate.d/httpd-prerotate
+          fi
+        endscript
+        postrotate
+          if pgrep -f ^/usr/sbin/apache2 > /dev/null; then
+            invoke-rc.d apache2 reload 2>&1 | logger -t apache2.logrotate
+          fi
+        endscript
+      }
+
+- name: Enable SSL module with dependencies
+  tags: Apache
+  ansible.builtin.file:
+    src: /etc/apache2/mods-available/{{ item }}
+    dest: /etc/apache2/mods-enabled/{{ item }}
+    state: link
+  loop:
+     - rewrite.load
+     - socache_shmcb.load
+     - ssl.load
+     - ssl.conf
+  notify: restart_apache
+
+- name: Redirect force to HTTPS
+  tags: Apache
+  ansible.builtin.copy:
+    dest: /etc/apache2/sites-available/000-default.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      <VirtualHost *:80>
+        RewriteEngine On
+        RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
+      </VirtualHost>
+  notify: restart_apache
+
+- name: Enable default SSL site
+  tags: Apache
+  ansible.builtin.file:
+    src: /etc/apache2/sites-available/default-ssl.conf
+    dest: /etc/apache2/sites-enabled/default-ssl.conf
+    state: link
+  notify: restart_apache

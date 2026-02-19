@@ -1,5 +1,6 @@
 
 - name: Setting email notification
+  tags: Fail2ban
   ansible.builtin.lineinfile:
     dest: /etc/fail2ban/jail.local
     regexp: "^destemail ="
@@ -7,6 +8,7 @@
   notify: restart_fail2ban
 
 - name: Setting email origin
+  tags: Fail2ban
   ansible.builtin.lineinfile:
     dest: /etc/fail2ban/jail.local
     regexp: "^sender ="
@@ -14,6 +16,7 @@
   notify: restart_fail2ban
 
 - name: Setting MTA to use
+  tags: Fail2ban
   ansible.builtin.lineinfile:
     dest: /etc/fail2ban/jail.local
     regexp: "^mta = "
@@ -21,6 +24,7 @@
   notify: restart_fail2ban
 
 - name: Setting email notification action
+  tags: Fail2ban
   ansible.builtin.lineinfile:
     dest: /etc/fail2ban/jail.local
     regexp: "^action = %(action_)s"

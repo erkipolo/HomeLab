@@ -1,11 +1,11 @@
 - name: Install iptables
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.apt:
     name: iptables-persistent
     state: latest
 
 - name: ACCEPT INPUT ESTABLISHED,RELATED
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.iptables:
     table: filter
     chain: INPUT
@@ -18,7 +18,7 @@
   notify: save_rules
 
 - name: ACCEPT INPUT loopback
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.iptables:
     table: filter
     chain: INPUT
@@ -31,7 +31,7 @@
   notify: save_rules
 
 - name: ACCEPT INPUT PING IPv4
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.iptables:
     table: filter
     chain: INPUT
@@ -45,7 +45,7 @@
   notify: save_rules
 
 - name: ACCEPT FORWARD ESTABLISHED,RELATED
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.iptables:
     table: filter
     chain: FORWARD
@@ -58,7 +58,7 @@
   notify: save_rules
 
 - name: ACCEPT FORWARD PING IPv4
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.iptables:
     table: filter
     chain: FORWARD
@@ -73,7 +73,7 @@
 
 # Add acces for admin(s) CIDR
 - name: ACCEPT INPUT LIMIT SSH IPv4
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.iptables:
     table: filter
     chain: INPUT
@@ -98,7 +98,7 @@
 
 # Add Firewalls defaults policy IPv4
 - name: DEFAULT DROP INPUT POLICY
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.iptables:
     table: filter
     chain: INPUT
@@ -111,7 +111,7 @@
   notify: save_rules
 
 - name: DEFAULT DROP FORWARD POLICY
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.iptables:
     table: filter
     chain: FORWARD
@@ -124,7 +124,7 @@
   notify: save_rules
 
 - name: DEFAULT ACCEPT OUTPUT POLICY
-  tags: Firewall
+  tags: IptablesInit
   ansible.builtin.iptables:
     table: filter
     chain: OUTPUT

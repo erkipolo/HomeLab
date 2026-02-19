@@ -1,4 +1,5 @@
 - name: Setting unattended upgrades email notification
+  tags: UnattendedUpgrades
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/53unattended-notification-local
     owner: root

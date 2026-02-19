@@ -1,0 +1,175 @@
+- name: Disable files listing
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/apache2.conf
+    regexp: "^\tOptions Indexes FollowSymLinks"
+    line: '        Options -Indexes -FollowSymLinks'
+  notify: restart_apache
+
+- name: Install apache security module
+  tags: SecureApache
+  ansible.builtin.apt:
+    name:
+      - modsecurity-crs
+      - libapache2-mod-security2
+    state: latest
+
+- name: Check if a local config file exist
+  tags: SecureApache
+  ansible.builtin.stat:
+    path: /etc/modsecurity/modsecurity.conf
+  register: file_check
+
+- name: Create a local config file it's not exist
+  tags: SecureApache
+  ansible.builtin.copy:
+    src: /etc/modsecurity/modsecurity.conf-recommended
+    dest: /etc/modsecurity/modsecurity.conf
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: file_check.stat.exists == false
+  notify: restart_apache
+
+- name: Enable Rule Engine
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/modsecurity/modsecurity.conf
+    regexp: "^SecRuleEngine"
+    line: 'SecRuleEngine On'
+  notify: restart_apache
+
+#- name: Enable security module
+#  tags: SecureApache
+#  ansible.builtin.file:
+#    src: /etc/apache2/mods-available/{{ item }}
+#    dest: /etc/apache2/mods-enabled/{{ item }}
+#    state: link
+#  loop:
+#     - security2.load
+#     - security2.conf
+#  notify: restart_apache
+
+#- name: Enable Rule Engine, Tokens and change Signature
+#  tags: SecureApache
+#  ansible.builtin.blockinfile:
+#    path: /etc/apache2/apache2.conf
+#    insertafter: '^IncludeOptional sites\-enabled\/\*\.conf'
+#    block: |
+#      <IfModule security2_module>
+#        SecRuleEngine on
+#        ServerTokens Full
+#        SecServerSignature "It doesn't matter"
+#      </IfModule>
+#    state: present
+#  notify: restart_apache
+
+#- name: Enable security configuration
+#  tags: SecureApache
+#  ansible.builtin.file:
+#    src: /etc/apache2/conf-available/{{ item }}
+#    dest: /etc/apache2/conf-enabled/{{ item }}
+#    state: link
+#  loop:
+#    - security.conf
+#  notify: restart_apache
+
+- name: Setting Tokens to Prod
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/conf-available/security.conf
+    regexp: "^ServerTokens"
+    line: 'ServerTokens Prod'
+  notify: restart_apache
+
+- name: Disable Signature
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/conf-available/security.conf
+    regexp: "^ServerSignature"
+    line: 'ServerSignature Off'
+  notify: restart_apache
+
+- name: Install apache evasive module
+  tags: SecureApache
+  ansible.builtin.apt:
+    name:
+      - libapache2-mod-evasive
+    state: latest
+
+#- name: Enable evasive module
+#  tags: SecureApache
+#  ansible.builtin.file:
+#    src: /etc/apache2/mods-available/{{ item }}
+#    dest: /etc/apache2/mods-enabled/{{ item }}
+#    state: link
+#  loop:
+#     - evasive.load
+#     - evasive.conf
+#  notify: restart_apache
+
+- name: Setting the Track of who is accesing what
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/mods-available/evasive.conf
+    regexp: "^    #DOSHashTableSize"
+    line: '    DOSHashTableSize    3079'
+  notify: restart_apache
+
+- name: Setting the threshold for the number of requests for the same page
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/mods-available/evasive.conf
+    regexp: "^    #DOSPageCount"
+    line: '    DOSPageCount        2'
+  notify: restart_apache
+
+- name: Setting the threshold for the total number of requests for any object by the same client per site
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/mods-available/evasive.conf
+    regexp: "^    #DOSSiteCount"
+    line: '    DOSSiteCount        50'
+  notify: restart_apache
+
+- name: Setting the interval used in the page count
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/mods-available/evasive.conf
+    regexp: "^    #DOSPageInterval"
+    line: '    DOSPageInterval     1'
+  notify: restart_apache
+
+- name: Setting the interval used in the site count
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/mods-available/evasive.conf
+    regexp: "^    #DOSSiteInterval"
+    line: '    DOSSiteInterval     1'
+  notify: restart_apache
+
+- name: Setting the amount of time (in seconds) that an IP is blocked
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/mods-available/evasive.conf
+    regexp: "^    #DOSBlockingPeriod"
+    line: '    DOSBlockingPeriod   10'
+  notify: restart_apache
+
+- name: Creating the log directory
+  tags: SecureApache
+  ansible.builtin.file:
+    path: /var/log/mod_evasive
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Setting the log directory location
+  tags: SecureApache
+  ansible.builtin.lineinfile:
+    dest: /etc/apache2/mods-available/evasive.conf
+    regexp: "^    #DOSLogDir"
+    line: '    DOSLogDir           "/var/log/mod_evasive"'
+  notify: restart_apache

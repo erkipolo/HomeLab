@@ -1,4 +1,5 @@
 - name: config repositories self-hosted check date valid until
+  tags: Repositories
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf
     owner: root

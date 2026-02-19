@@ -1,10 +1,12 @@
 - name: Install Unattended Upgrades
+  tags: UnattendedUpgrades
   ansible.builtin.apt:
     name:
       - unattended-upgrades
     state: latest
 
 - name: Setting what and when to unattended upgrades
+  tags: UnattendedUpgrades
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/52unattended-upgrades-local
     owner: root
@@ -29,6 +31,7 @@
   notify: restart_unattended
 
 - name: Config unattended upgrades log
+  tags: UnattendedUpgrades
   ansible.builtin.copy:
     dest: /etc/logrotate.d/unattended-upgrades
     owner: root
@@ -48,6 +51,7 @@
       }
 
 - name: Enable unattended update, download, upgrade and clean Packages
+  tags: UnattendedUpgrades
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/20auto-upgrades
     owner: root

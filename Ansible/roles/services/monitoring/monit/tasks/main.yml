@@ -1,17 +1,20 @@
 - name: Install monit
+  tags: Monit
   ansible.builtin.apt:
     name:
       - monit
     state: latest
 
-- name: Check resources each 5 min
+- name: Check resources each 1 min
+  tags: Monit
   ansible.builtin.lineinfile:
     dest: /etc/monit/monitrc
     regexp: "^set daemon "
-    line: 'set daemon 300'
+    line: 'set daemon 60'
   notify: restart_monit
 
 - name: Set log file location
+  tags: Monit
   ansible.builtin.lineinfile:
     dest: /etc/monit/monitrc
     regexp: "^set logfile "
@@ -19,6 +22,7 @@
   notify: restart_monit
 
 - name: Setting monit log rotation
+  tags: Monit
   ansible.builtin.copy:
     dest: /etc/logrotate.d/monit
     owner: root
@@ -41,6 +45,7 @@
       }
 
 - name: Config how to monitor the resources
+  tags: Monit
   ansible.builtin.copy:
     dest: /etc/monit/conf.d/CheckResources
     owner: root
