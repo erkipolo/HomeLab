@@ -489,15 +489,15 @@
         path: /var/www/nextcloud/config/config.php
       register: file_check
 
-#    - name: Download nextcloud
-#      ansible.builtin.get_url:
-#        url: "http://download.nextcloud.com/server/releases/nextcloud-32.0.2.zip"
-#        dest: "/tmp/"
-#      when: file_check.stat.exists == false
+    - name: Copy nextcloud archive
+      ansible.builtin.copy:
+        src: nextcloud-32.0.2.zip
+        dest: /tmp/nextcloud.zip
+      when: file_check.stat.exists == false
 
-    - name: Extract nextcloud archives
+    - name: Extract nextcloud archive
       ansible.builtin.unarchive:
-        src: "/tmp/nextcloud-32.0.2.zip"
+        src: "/tmp/nextcloud.zip"
         dest: "/tmp/"
         remote_src: yes
       when: file_check.stat.exists == false
@@ -603,7 +603,7 @@
           path: "{{ item }}"
           state: absent
       loop:
-         - /tmp/nextcloud-32.0.2.zip
+         - /tmp/nextcloud.zip
          - /tmp/nextcloud
       when: file_check.stat.exists == false
 
