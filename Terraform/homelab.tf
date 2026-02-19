@@ -1,14 +1,14 @@
 resource "proxmox_lxc" "ct00" {
   cores           = 1
   hostname        = "ct00"
-  memory          = 512
+  memory          = 1024
   nameserver      = "8.8.8.8"
   onboot          = true
   ostemplate      = "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
   ssh_public_keys = var.ct_ssh_public_key
   searchdomain    = "homelab.cu"
   start           = true
-  swap            = 512
+  swap            = 1024
   target_node     = "pve"
   unprivileged    = true
   vmid            = 700

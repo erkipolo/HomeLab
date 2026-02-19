@@ -1,0 +1,617 @@
+---
+# This config is designed to work on
+# Debian 13.3 trixie and may work with
+# other similar distros
+- name: Self hosted proxmox configuration
+  tags: SelfHosted
+  hosts:
+    - proxmox
+  tasks:
+    - name: Add proxmox repositories URL to hosts
+      ansible.builtin.lineinfile:
+        dest: /etc/hosts
+        regexp: '{{ proxmox_self_hosted_find }}'
+        line: "{{ proxmox_self_hosted_hosts }}"
+
+- name: Config proxmox repositories
+  tags: Repositories
+  hosts:
+    - proxmox
+  tasks:
+    - name: Delete enterprise proxmox config file
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/pve-enterprise.sources
+
+    - name: Add proxmox main repositories
+      ansible.builtin.deb822_repository:
+        name: proxmox
+        types: deb
+        uris: http://download.proxmox.com/debian/pve
+        suites:
+          - trixie
+        components:
+          - pve-no-subscription
+        architectures: amd64
+        signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+        state: present
+
+    - name: Add proxmox ceph repositories
+      ansible.builtin.deb822_repository:
+        name: ceph
+        types: deb
+        uris: http://download.proxmox.com/debian/ceph-squid
+        suites:
+          - trixie
+        components:
+          - no-subscription
+        architectures: amd64
+        signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+        state: present
+
+- name: Self hosted debian configuration
+  tags: SelfHosted
+  hosts:
+    - debian
+  tasks:
+    - name: Add debian repositories URL to hosts
+      ansible.builtin.lineinfile:
+        dest: /etc/hosts
+        regexp: '{{ debian_self_hosted_find }}'
+        line: "{{ debian_self_hosted_hosts }}"
+
+    - name: Do not check repositories valid date
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          acquire::check-valid-until "0";
+
+- name: Config debian repositories
+  tags: Repositories
+  hosts:
+    - debian
+  tasks:
+    - name: Delete obsolete config file
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list
+
+    - name: Add debian main repositories
+      ansible.builtin.deb822_repository:
+        name: debian
+        types: deb
+        uris: http://deb.debian.org/debian
+        suites:
+          - trixie
+          - trixie-updates
+        components:
+          - main
+          - contrib
+        architectures: amd64
+        signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+        state: present
+
+    - name: Add debian security repositories
+      ansible.builtin.deb822_repository:
+        name: security
+        types: deb
+        uris: http://security.debian.org/debian-security
+        suites:
+          - trixie-security
+        components:
+          - main
+          - contrib
+        architectures: amd64
+        signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+        state: present
+
+    - name: Update and Upgrade System
+      ansible.builtin.apt:
+        upgrade: dist
+        update_cache: yes
+        cache_valid_time: 0
+        state: latest
+
+- name: Add sudo user
+  tags: SudoUser
+  hosts:
+    - server
+  tasks:
+    - name: Install sudo
+      ansible.builtin.apt:
+        name:
+          - sudo
+        state: latest
+
+    - name: Create a new user
+      ansible.builtin.user:
+        name: "{{ SUDO_USER_NAME }}"
+        password: "{{ lookup('file', SUDO_USER_PASS) }}"
+        state: present
+        createhome: yes
+        shell: /bin/bash
+
+    - name: Add new user to sudo group
+      ansible.builtin.blockinfile:
+        path: /etc/sudoers.d/{{ SUDO_USER_NAME }}
+        create: yes
+        block: |
+          {{ SUDO_USER_NAME}} ALL=(ALL:ALL) ALL
+
+    - name: Add new user public key 
+      ansible.builtin.authorized_key:
+        user: "{{ SUDO_USER_NAME }}"
+        key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
+        state: present
+
+- name: Install LAMP
+  tags: lamp
+  hosts:
+    - lamp
+  tasks:
+    - name: Install apache and ssl-cert
+      ansible.builtin.apt:
+        name:
+          - apache2
+          - ssl-cert
+        state: latest
+
+    - name: Config apache log rotation
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/apache2
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /var/log/apache2/*.log
+          {
+            daily
+            dateext
+            dateformat -%Y%m%d%H%M
+            missingok
+            rotate 365
+            compress
+            create 640 root adm
+            sharedscripts
+            prerotate
+              if [ -d /etc/logrotate.d/httpd-prerotate ]; then
+                run-parts /etc/logrotate.d/httpd-prerotate
+              fi
+            endscript
+            postrotate
+              if pgrep -f ^/usr/sbin/apache2 > /dev/null; then
+                invoke-rc.d apache2 reload 2>&1 | logger -t apache2.logrotate
+              fi
+            endscript
+          }
+
+    - name: Enable SSL module with dependencies
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - rewrite.load
+         - socache_shmcb.load
+         - ssl.load
+         - ssl.conf
+      notify: restart_apache
+
+    - name: Force HTTP redirect to HTTPS
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/000-default.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:80>
+            RewriteEngine On
+            RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
+          </VirtualHost>
+      notify: restart_apache
+
+    - name: Enable default SSL site
+      ansible.builtin.file:
+        src: /etc/apache2/sites-available/default-ssl.conf
+        dest: /etc/apache2/sites-enabled/default-ssl.conf
+        state: link
+      notify: restart_apache
+
+    - name: Install MariaDB
+      ansible.builtin.apt:
+        name:
+          - mariadb-server
+        state: latest
+
+    - name: Install Ansible MariaDB support
+      ansible.builtin.apt:
+        name:
+          - python3-mysqldb
+        state: latest
+
+    - name: Install PHP version fpm
+      ansible.builtin.apt:
+        name:
+          - php
+          - php-fpm
+        state: latest
+
+    - name: Install Apache support for PHP
+      ansible.builtin.apt:
+        name:
+          - libapache2-mod-php
+        state: latest
+
+    - name: Install MariaDB support for PHP
+      ansible.builtin.apt:
+        name:
+          - php-mysql
+        state: latest
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: Self hosted nextcloud configuration
+  tags: SelfHosted
+  hosts:
+    - nextcloud
+  tasks:
+    - name: Add nextcloud download URL to hosts
+      ansible.builtin.lineinfile:
+        dest: /etc/hosts
+        regexp: '{{ nextcloud_self_hosted_find }}'
+        line: "{{ nextcloud_self_hosted_hosts }}"
+
+- name: Install Nextcloud
+  tags: nextcloud
+  hosts:
+    - nextcloud
+  tasks:
+    - name: Install PHP dependencies
+      ansible.builtin.apt:
+        name:
+          - php-gd
+          - php-cli
+          - php-gmp
+          - php-xml
+          - php-zip
+          - php-apcu
+          - php-curl
+          - php-intl
+          - php-ldap
+          - php-bcmath
+          - php-mbstring
+          - php-imagick
+        state: latest
+      notify: restart_apache
+
+    - name: Install software dependencies
+      ansible.builtin.apt:
+        name:
+          - imagemagick-7.q16
+          - unzip
+        state: latest
+
+    - name: Create nextcloud site configuration
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/nextcloud.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:443>
+            DocumentRoot  "/var/www/nextcloud"
+            ServerName    {{ ansible_fqdn }}
+            ServerAlias   nube.homelab.cu
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}/access.log combined
+            SSLEngine on
+            SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
+            SSLCertificateKeyFile   /etc/ssl/private/ssl-cert-snakeoil.key
+            <FilesMatch "\.(?:cgi|shtml|phtml|php)$">
+                    SSLOptions +StdEnvVars
+            </FilesMatch>
+            <Directory /usr/lib/cgi-bin>
+                    SSLOptions +StdEnvVars
+            </Directory>
+            <Directory "/var/www/nextcloud/">
+              Options MultiViews FollowSymlinks
+              AllowOverride All
+              Order allow,deny
+              Allow from all
+            </Directory>
+          </VirtualHost>
+      notify: restart_apache
+
+    - name: Enable nextcloud SSL site
+      ansible.builtin.file:
+        src: /etc/apache2/sites-available/nextcloud.conf
+        dest: /etc/apache2/sites-enabled/nextcloud.conf
+        state: link
+      notify: restart_apache
+
+    - name: Enable apache modules for nextcloud
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - dir.load
+         - dir.conf
+         - env.load
+         - headers.load
+         - mime.load
+         - mime.conf
+      notify: restart_apache
+
+    - name: Create nextcloud database
+      ansible.builtin.mysql_db:
+        name: "nextcloud"
+        state: present
+
+    - name: Create nextcloud user for nextcloud database
+      ansible.builtin.mysql_user:
+        name: "nextcloud"
+        password: 'nextcloud'
+        priv: "nextcloud.*:ALL"
+        host: 'localhost'
+        state: present
+
+    - name: Increase PHP memory limit
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^memory_limit ='
+        line: "memory_limit = 512M"
+
+    - name: Increase PHP filesize limit to upload
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^upload_max_filesize ='
+        line: "upload_max_filesize = 200M"
+
+    - name: Increase PHP execution time limit
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^max_execution_time ='
+        line: "max_execution_time = 360"
+
+    - name: Increase PHP size of POST data limit
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^post_max_size ='
+        line: "post_max_size = 200M"
+
+    - name: Setting PHP time zone
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^;date.timezone ='
+        line: "date.timezone = America/Havana"
+
+    - name: Enable PHP opcache
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^;opcache.enable='
+        line: "opcache.enable=1"
+
+    - name: Increase PHP amount of memory for interned strings for opcache
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^;opcache.interned_strings_buffer='
+        line: "opcache.interned_strings_buffer=16"
+
+    - name: Setting PHP maximum number of keys for opcache
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^;opcache.max_accelerated_files='
+        line: "opcache.max_accelerated_files=10000"
+
+    - name: Setting PHP opcache shared memory
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^;opcache.memory_consumption='
+        line: "opcache.memory_consumption=128"
+
+    - name: Setting PHP opcache how often to check file for changes
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^;opcache.revalidate_freq='
+        line: "opcache.revalidate_freq=1"
+
+    - name: Enable PHP opcache comments
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/apache2/php.ini
+        regexp: '^;opcache.save_comments='
+        line: "opcache.save_comments=1"
+
+    - name: Enable CLI to PHP module APCU
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/mods-available/apcu.ini
+        regexp: '^apc.enable_cli='
+        line: "apc.enable_cli=1"
+      notify: restart_apache
+
+    - name: Enable PHP module for fpm
+      ansible.builtin.file:
+        src: /etc/php/8.4/mods-available/{{ item }}.ini
+        dest: /etc/php/8.4/fpm/conf.d/20-{{ item }}.ini
+        state: link
+      loop:
+        - gmp
+        - apcu
+        - intl
+        - bcmath
+        - imagick
+        - zip
+      notify: restart_apache
+
+    - name: Enable PHP module for apache
+      ansible.builtin.file:
+        src: /etc/php/8.4/mods-available/{{ item }}.ini
+        dest: /etc/php/8.4/apache2/conf.d/20-{{ item }}.ini
+        state: link
+      loop:
+        - gmp
+        - apcu
+        - intl
+        - bcmath
+        - imagick
+        - zip
+      notify: restart_apache
+
+    - name: Enable PHP module for cli
+      ansible.builtin.file:
+        src: /etc/php/8.4/mods-available/{{ item }}.ini
+        dest: /etc/php/8.4/cli/conf.d/20-{{ item }}.ini
+        state: link
+      loop:
+        - gmp
+        - apcu
+        - intl
+        - bcmath
+        - imagick
+        - zip
+      notify: restart_apache
+
+    - name: Check if nextcloud are installed
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/config/config.php
+      register: file_check
+
+#    - name: Download nextcloud
+#      ansible.builtin.get_url:
+#        url: "http://download.nextcloud.com/server/releases/nextcloud-32.0.2.zip"
+#        dest: "/tmp/"
+#      when: file_check.stat.exists == false
+
+    - name: Extract nextcloud archives
+      ansible.builtin.unarchive:
+        src: "/tmp/nextcloud-32.0.2.zip"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
+
+    - name: Copy nextcloud folder to www
+      ansible.builtin.copy:
+        src: /tmp/nextcloud/
+        dest: /var/www/nextcloud/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Create data directory for the nextcloud
+      ansible.builtin.file:
+        path: /var/www/nextcloud/data
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Give execution permissions to OCC
+      ansible.builtin.file:
+        path: /var/www/nextcloud/occ
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Install nextcloud with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+        php /var/www/nextcloud/occ \
+        maintenance:install \
+        --admin-user='admin' \
+        --admin-pass='admin' \
+        --data-dir='/var/www/nextcloud/data' \
+        --database='mysql' \
+        --database-name='nextcloud' \
+        --database-user='nextcloud' \
+        --database-pass='nextcloud' \
+        --database-host='localhost'
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Fix missing indices on nextcloud database with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+          php /var/www/nextcloud/occ \
+          db:add-missing-indices
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Repair include expensive on nextcloud with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+          php /var/www/nextcloud/occ \
+          maintenance:repair \
+          --include-expensive
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Include trusted domains on nextcloud with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+          php /var/www/nextcloud/occ \
+          config:system:set \
+          trusted_domains 1 --value=nube.homelab.cu
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Include phone region on nextcloud with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+          php /var/www/nextcloud/occ \
+          config:system:set \
+          default_phone_region --value=CU
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Include local memory cache on nextcloud with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+          php /var/www/nextcloud/occ \
+          config:system:set \
+          memcache.local --value=\\OC\\Memcache\\APCu
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Remove execution permissions to OCC
+      ansible.builtin.file:
+        path: /var/www/nextcloud/occ
+        owner: www-data
+        group: www-data
+        mode: '0660'
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Removing temporal files
+      ansible.builtin.file:
+          path: "{{ item }}"
+          state: absent
+      loop:
+         - /tmp/nextcloud-32.0.2.zip
+         - /tmp/nextcloud
+      when: file_check.stat.exists == false
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+

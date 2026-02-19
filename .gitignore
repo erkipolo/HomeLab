@@ -35,3 +35,6 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+Ansible/allinone/files/documentserver_community-0.2.2.tar.gz
+Ansible/allinone/files/nextcloud-32.0.2.zip
+Ansible/allinone/files/onlyoffice-9.12.0.tar.gz
