@@ -125,13 +125,6 @@
   hosts:
     - server
   tasks:
-    - name: Install sudo
-      ansible.builtin.apt:
-        update_cache: yes
-        name:
-          - sudo
-        state: latest
-
     - name: Create a new user
       ansible.builtin.user:
         name: "{{ SUDO_USER_NAME }}"
@@ -140,18 +133,25 @@
         createhome: yes
         shell: /bin/bash
 
+    - name: Add new user public key 
+      ansible.builtin.authorized_key:
+        user: "{{ SUDO_USER_NAME }}"
+        key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
+        state: present
+
+    - name: Install sudo
+      ansible.builtin.apt:
+        update_cache: yes
+        name:
+          - sudo
+        state: latest
+
     - name: Add new user to sudo group
       ansible.builtin.blockinfile:
         path: /etc/sudoers.d/{{ SUDO_USER_NAME }}
         create: yes
         block: |
           {{ SUDO_USER_NAME}} ALL=(ALL:ALL) ALL
-
-    - name: Add new user public key 
-      ansible.builtin.authorized_key:
-        user: "{{ SUDO_USER_NAME }}"
-        key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
-        state: present
 
 - name: Install LAMP
   tags: lamp
@@ -504,12 +504,22 @@
         dest: /tmp/nextcloud.zip
       when: file_check.stat.exists == false
 
+    - name: Check if nextcloud are downloaded
+      ansible.builtin.stat:
+        path: /tmp/nextcloud.zip
+      register: file_check
+
     - name: Extract nextcloud archive
       ansible.builtin.unarchive:
         src: "/tmp/nextcloud.zip"
         dest: "/tmp/"
         remote_src: yes
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
+
+    - name: Check if nextcloud are extracted
+      ansible.builtin.stat:
+        path: /tmp/nextcloud/AUTHORS
+      register: file_check
 
     - name: Copy nextcloud folder to www
       ansible.builtin.copy:
@@ -520,7 +530,12 @@
         group: www-data
         mode: '0755'
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
+
+    - name: Check if nextcloud was copied
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/AUTHORS
+      register: file_check
 
     - name: Create data directory for the nextcloud
       ansible.builtin.file:
@@ -530,7 +545,7 @@
         group: www-data
         mode: '0755'
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Give execution permissions to OCC
       ansible.builtin.file:
@@ -538,7 +553,7 @@
         owner: www-data
         group: www-data
         mode: '0755'
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Install nextcloud with OCC
       ansible.builtin.shell: |
@@ -554,7 +569,7 @@
         --database-pass='{{ NEXTCLOUD_DATABASE_PASS }}' \
         --database-host='localhost'
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Fix missing indices on nextcloud database with OCC
       ansible.builtin.shell: |
@@ -562,7 +577,7 @@
           php /var/www/nextcloud/occ \
           db:add-missing-indices
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Repair include expensive on nextcloud with OCC
       ansible.builtin.shell: |
@@ -571,7 +586,7 @@
           maintenance:repair \
           --include-expensive
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Include trusted domains on nextcloud with OCC
       ansible.builtin.shell: |
@@ -580,7 +595,7 @@
           config:system:set \
           trusted_domains 1 --value={{ NEXTCLOUD_HOST_ALIAS }}.{{ ansible_domain }}
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Include local memory cache on nextcloud with OCC
       ansible.builtin.shell: |
@@ -589,7 +604,7 @@
           config:system:set \
           memcache.local --value=\\OC\\Memcache\\APCu
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Include phone region on nextcloud with OCC
       ansible.builtin.shell: |
@@ -598,7 +613,7 @@
           config:system:set \
           default_phone_region --value=CU
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Remove execution permissions to OCC
       ansible.builtin.file:
@@ -606,7 +621,7 @@
         owner: www-data
         group: www-data
         mode: '0660'
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Removing temporal files
       ansible.builtin.file:
@@ -615,7 +630,7 @@
       loop:
          - /tmp/nextcloud.zip
          - /tmp/nextcloud
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Check if Document Server Community are installed
       ansible.builtin.stat:
@@ -628,12 +643,22 @@
         dest: /tmp/documentserver_community.tar.gz
       when: file_check.stat.exists == false
 
+    - name: Check if Document Server Community was copied
+      ansible.builtin.stat:
+        path: /tmp/documentserver_community.tar.gz
+      register: file_check
+
     - name: Extract Document Server Community archive
       ansible.builtin.unarchive:
         src: "/tmp/documentserver_community.tar.gz"
         dest: "/tmp/"
         remote_src: yes
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
+
+    - name: Check if Document Server Community was extracted
+      ansible.builtin.stat:
+        path: /tmp/documentserver_community/README.md
+      register: file_check
 
     - name: Copy Document Server Community folder to nextcloud apps
       ansible.builtin.copy:
@@ -644,7 +669,12 @@
         group: www-data
         mode: '0755'
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
+
+    - name: Check if Document Server Community was copied
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/apps/documentserver_community/README.md
+      register: file_check
 
     - name: Give execution permissions to OCC
       ansible.builtin.file:
@@ -652,7 +682,7 @@
         owner: www-data
         group: www-data
         mode: '0755'
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Enable Document Server Community on nextcloud with OCC
       ansible.builtin.shell: |
@@ -660,7 +690,7 @@
           php /var/www/nextcloud/occ \
           app:enable documentserver_community
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Remove execution permissions to OCC
       ansible.builtin.file:
@@ -668,7 +698,7 @@
         owner: www-data
         group: www-data
         mode: '0660'
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Removing temporal files
       ansible.builtin.file:
@@ -677,7 +707,7 @@
       loop:
          - /tmp/documentserver_community.tar.gz
          - /tmp/documentserver_community
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Check if OnlyOffice are installed
       ansible.builtin.stat:
@@ -690,12 +720,22 @@
         dest: /tmp/onlyoffice.tar.gz
       when: file_check.stat.exists == false
 
+    - name: Check if OnlyOffice was copied
+      ansible.builtin.stat:
+        path: /tmp/onlyoffice.tar.gz
+      register: file_check
+
     - name: Extract OnlyOffice archive
       ansible.builtin.unarchive:
         src: "/tmp/onlyoffice.tar.gz"
         dest: "/tmp/"
         remote_src: yes
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
+
+    - name: Check if OnlyOffice was extracted
+      ansible.builtin.stat:
+        path: /tmp/onlyoffice/README.md
+      register: file_check
 
     - name: Copy OnlyOffice folder to nextcloud apps
       ansible.builtin.copy:
@@ -706,7 +746,12 @@
         group: www-data
         mode: '0755'
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
+
+    - name: Check if OnlyOffice was copied
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/apps/onlyoffice/README.md
+      register: file_check
 
     - name: Give execution permissions to OCC
       ansible.builtin.file:
@@ -714,7 +759,7 @@
         owner: www-data
         group: www-data
         mode: '0755'
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Enable OnlyOffice on nextcloud with OCC
       ansible.builtin.shell: |
@@ -722,7 +767,7 @@
           php /var/www/nextcloud/occ \
           app:install onlyoffice
       notify: restart_apache
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Remove execution permissions to OCC
       ansible.builtin.file:
@@ -730,7 +775,7 @@
         owner: www-data
         group: www-data
         mode: '0660'
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
     - name: Removing temporal files
       ansible.builtin.file:
@@ -739,7 +784,7 @@
       loop:
          - /tmp/onlyoffice.tar.gz
          - /tmp/onlyoffice
-      when: file_check.stat.exists == false
+      when: file_check.stat.exists == true
 
   handlers:
     - name: restart_apache

@@ -8,6 +8,13 @@ all:
     SNMP_CIDR_1: '192.168.56.1/32'
     SNMP_CIDR_2: '192.168.56.1/32'
     SNMP_CIDR_3: '192.168.56.1/32'
+  hosts:
+    pve:
+      ansible_host: 192.168.56.9
+    ct00:
+      ansible_host: 192.168.56.10
+    ct01:
+      ansible_host: 192.168.56.11
   children:
     debian:
       vars:
@@ -23,7 +30,6 @@ all:
             lamp:
               hosts:
                 ct00:
-                  ansible_host: 192.168.56.10
               children:
                 nextcloud:
                   vars:
@@ -34,11 +40,9 @@ all:
                     NEXTCLOUD_DATABASE_PASS: 'nextcloud'
                   hosts:
                     ct01:
-                      ansible_host: 192.168.56.11
         proxmox:
           vars:
             proxmox_self_hosted_find:  '^192\.168\.56\.1 dow'
             proxmox_self_hosted_hosts: '192.168.56.1 download.proxmox.com'
           hosts:
             pve:
-              ansible_host: 192.168.56.9
