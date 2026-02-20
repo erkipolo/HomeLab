@@ -48,3 +48,9 @@ Ansible:
   Playbook
     ansible-playbook --syntax-check stage.yml
     ansible-playbook [-l hostname] [-t 'upgrade'] stage.yml
+
+Files by Roles:
+  Nextcloud
+    nextcloud-32.0.2.zip
+    documentserver_community-0.2.2.tar.gz
+    onlyoffice-9.12.0.tar.gz

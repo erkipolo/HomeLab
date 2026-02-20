@@ -24,8 +24,10 @@ all:
               children:
                 nextcloud:
                   vars:
-                    nextcloud_self_hosted_find:   '^192\.168\.56\.1 dow'
-                    nextcloud_self_hosted_hosts:  '192.168.56.1 download.nextcloud.com'
+                    NEXTCLOUD_ADMIN_USER: 'admin'
+                    NEXTCLOUD_ADMIN_PASS: 'admin'
+                    NEXTCLOUD_DATABASE_USER: 'nextcloud'
+                    NEXTCLOUD_DATABASE_PASS: 'nextcloud'
                   hosts:
                     ct00:
                       ansible_host: 192.168.56.10
