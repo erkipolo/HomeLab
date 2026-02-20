@@ -21,16 +21,20 @@ all:
             SUDO_USER_PUB_KEY: '~/.ssh/homelab_key.pub'
           children:
             lamp:
+              hosts:
+                ct00:
+                  ansible_host: 192.168.56.10
               children:
                 nextcloud:
                   vars:
+                    NEXTCLOUD_HOST_ALIAS: 'nube'
                     NEXTCLOUD_ADMIN_USER: 'admin'
                     NEXTCLOUD_ADMIN_PASS: 'admin'
                     NEXTCLOUD_DATABASE_USER: 'nextcloud'
                     NEXTCLOUD_DATABASE_PASS: 'nextcloud'
                   hosts:
-                    ct00:
-                      ansible_host: 192.168.56.10
+                    ct01:
+                      ansible_host: 192.168.56.11
         proxmox:
           vars:
             proxmox_self_hosted_find:  '^192\.168\.56\.1 dow'

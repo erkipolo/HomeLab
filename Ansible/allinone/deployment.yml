@@ -114,9 +114,10 @@
 
     - name: Update and Upgrade System
       ansible.builtin.apt:
-        upgrade: dist
         update_cache: yes
-        cache_valid_time: 0
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
         state: latest
 
 - name: Add sudo user
@@ -126,6 +127,7 @@
   tasks:
     - name: Install sudo
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - sudo
         state: latest
@@ -158,6 +160,7 @@
   tasks:
     - name: Install apache and ssl-cert
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - apache2
           - ssl-cert
@@ -226,18 +229,21 @@
 
     - name: Install MariaDB
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - mariadb-server
         state: latest
 
     - name: Install Ansible MariaDB support
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - python3-mysqldb
         state: latest
 
     - name: Install PHP version fpm
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - php
           - php-fpm
@@ -245,12 +251,14 @@
 
     - name: Install Apache support for PHP
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - libapache2-mod-php
         state: latest
 
     - name: Install MariaDB support for PHP
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - php-mysql
         state: latest
@@ -270,6 +278,7 @@
   tasks:
     - name: Install PHP dependencies
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - php-gd
           - php-cli
@@ -284,10 +293,10 @@
           - php-mbstring
           - php-imagick
         state: latest
-      notify: restart_apache
 
     - name: Install software dependencies
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - imagemagick-7.q16
           - unzip
@@ -303,7 +312,7 @@
           <VirtualHost *:443>
             DocumentRoot  "/var/www/nextcloud"
             ServerName    {{ ansible_fqdn }}
-            ServerAlias   nube.homelab.cu
+            ServerAlias   {{ NEXTCLOUD_HOST_ALIAS }}.{{ ansible_domain }}
             ErrorLog ${APACHE_LOG_DIR}/error.log
             CustomLog ${APACHE_LOG_DIR}/access.log combined
             SSLEngine on
@@ -363,66 +372,77 @@
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^memory_limit ='
         line: "memory_limit = 512M"
+      notify: restart_apache
 
     - name: Increase PHP filesize limit to upload
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^upload_max_filesize ='
         line: "upload_max_filesize = 200M"
+      notify: restart_apache
 
     - name: Increase PHP execution time limit
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^max_execution_time ='
         line: "max_execution_time = 360"
+      notify: restart_apache
 
     - name: Increase PHP size of POST data limit
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^post_max_size ='
         line: "post_max_size = 200M"
+      notify: restart_apache
 
     - name: Setting PHP time zone
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^;date.timezone ='
         line: "date.timezone = America/Havana"
+      notify: restart_apache
 
     - name: Enable PHP opcache
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^;opcache.enable='
         line: "opcache.enable=1"
+      notify: restart_apache
 
     - name: Increase PHP amount of memory for interned strings for opcache
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^;opcache.interned_strings_buffer='
         line: "opcache.interned_strings_buffer=16"
+      notify: restart_apache
 
     - name: Setting PHP maximum number of keys for opcache
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^;opcache.max_accelerated_files='
         line: "opcache.max_accelerated_files=10000"
+      notify: restart_apache
 
     - name: Setting PHP opcache shared memory
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^;opcache.memory_consumption='
         line: "opcache.memory_consumption=128"
+      notify: restart_apache
 
     - name: Setting PHP opcache how often to check file for changes
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^;opcache.revalidate_freq='
         line: "opcache.revalidate_freq=1"
+      notify: restart_apache
 
     - name: Enable PHP opcache comments
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/apache2/php.ini
         regexp: '^;opcache.save_comments='
         line: "opcache.save_comments=1"
+      notify: restart_apache
 
     - name: Enable CLI to PHP module APCU
       ansible.builtin.lineinfile:
@@ -499,6 +519,7 @@
         owner: www-data
         group: www-data
         mode: '0755'
+      notify: restart_apache
       when: file_check.stat.exists == false
 
     - name: Create data directory for the nextcloud
@@ -508,6 +529,7 @@
         owner: www-data
         group: www-data
         mode: '0755'
+      notify: restart_apache
       when: file_check.stat.exists == false
 
     - name: Give execution permissions to OCC
@@ -556,16 +578,7 @@
         sudo -u www-data \
           php /var/www/nextcloud/occ \
           config:system:set \
-          trusted_domains 1 --value=nube.homelab.cu
-      notify: restart_apache
-      when: file_check.stat.exists == false
-
-    - name: Include phone region on nextcloud with OCC
-      ansible.builtin.shell: |
-        sudo -u www-data \
-          php /var/www/nextcloud/occ \
-          config:system:set \
-          default_phone_region --value=CU
+          trusted_domains 1 --value={{ NEXTCLOUD_HOST_ALIAS }}.{{ ansible_domain }}
       notify: restart_apache
       when: file_check.stat.exists == false
 
@@ -578,13 +591,21 @@
       notify: restart_apache
       when: file_check.stat.exists == false
 
+    - name: Include phone region on nextcloud with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+          php /var/www/nextcloud/occ \
+          config:system:set \
+          default_phone_region --value=CU
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
     - name: Remove execution permissions to OCC
       ansible.builtin.file:
         path: /var/www/nextcloud/occ
         owner: www-data
         group: www-data
         mode: '0660'
-      notify: restart_apache
       when: file_check.stat.exists == false
 
     - name: Removing temporal files
@@ -647,7 +668,6 @@
         owner: www-data
         group: www-data
         mode: '0660'
-      notify: restart_apache
       when: file_check.stat.exists == false
 
     - name: Removing temporal files
@@ -710,7 +730,6 @@
         owner: www-data
         group: www-data
         mode: '0660'
-      notify: restart_apache
       when: file_check.stat.exists == false
 
     - name: Removing temporal files
