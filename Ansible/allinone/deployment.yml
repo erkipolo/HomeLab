@@ -51,6 +51,20 @@
         signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
         state: present
 
+- name: Add pam user to proxmox
+  tags: AdminPamUserPve
+  hosts:
+    - proxmox
+  tasks:
+    - name: Create a proxmox PAM user Administrator
+      ansible.builtin.blockinfile:
+        path: /etc/pve/user.cfg
+        create: yes
+        block: |
+          user:{{ SUDO_USER_NAME}}@pam:1:0::::::
+          group:{{ SUDO_USER_NAME}}:{{ SUDO_USER_NAME}}@pam::
+          acl:1:/:@{{ SUDO_USER_NAME}}:Administrator:
+
 - name: Self hosted debian configuration
   tags: SelfHosted
   hosts:
@@ -70,6 +84,25 @@
         mode: '0644'
         content: |
           acquire::check-valid-until "0";
+
+
+- name: Config timezone
+  tags: timezone
+  hosts:
+    - debian
+  tasks:
+    - name: Set timezone
+      ansible.builtin.timezone:
+        name: "America/Havana"
+
+#- name: Config locales
+#  tags: locales
+#  hosts:
+#    - debian
+#  tasks:
+#    - name: Set locales
+#      ansible.builtin.locales:
+#        name: "en_US.UTF-8"
 
 - name: Config debian repositories
   tags: Repositories
@@ -126,6 +159,38 @@
         state: latest
         cache_valid_time: 0
 
+- name: Add sudo user
+  tags: SudoUser
+  hosts:
+    - debian
+  tasks:
+    - name: Create a new user
+      ansible.builtin.user:
+        name: "{{ SUDO_USER_NAME }}"
+        password: "{{ lookup('file', SUDO_USER_PASS) }}"
+        state: present
+        createhome: yes
+        shell: /bin/bash
+
+    - name: Add new user public key 
+      ansible.builtin.authorized_key:
+        user: "{{ SUDO_USER_NAME }}"
+        key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
+        state: present
+
+    - name: Install sudo
+      ansible.builtin.apt:
+        name:
+          - sudo
+        state: latest
+
+    - name: Add new user to sudo group
+      ansible.builtin.blockinfile:
+        path: /etc/sudoers.d/{{ SUDO_USER_NAME }}
+        create: yes
+        block: |
+          {{ SUDO_USER_NAME}} ALL=(ALL:ALL) ALL
+
 - name: Enable Unattended upgrades
   tags: UnattendedUpgrades
   hosts:
@@ -139,7 +204,7 @@
 
     - name: Setting what and when to unattended upgrades
       ansible.builtin.copy:
-        dest: /etc/apt/apt.conf.d/52unattended-upgrades-local
+        dest: /etc/apt/apt.conf.d/52unattended-upgrades
         owner: root
         group: root
         mode: '0644'
@@ -201,37 +266,169 @@
         enabled: true
         state: restarted
 
-- name: Add sudo user
-  tags: SudoUser
+- name: Install HIPS
+  tags: fail2ban
+  hosts:
+    - debian
+  tasks:
+    - name: Install fail2ban
+      ansible.builtin.apt:
+        name:
+          - fail2ban
+        state: latest
+
+    - name: Check if a local config exist
+      ansible.builtin.stat:
+        path: /etc/fail2ban/jail.local
+      register: file_check
+
+    - name: Create a local config file
+      ansible.builtin.copy:
+        src: /etc/fail2ban/jail.conf
+        dest: /etc/fail2ban/jail.local
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0644'
+      when: file_check.stat.exists == false
+
+    - name: Change Ban Time
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^bantime  = 10m"
+        line: 'bantime  = 10h'
+      notify: restart_fail2ban
+
+    - name: Change Max Retry
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^maxretry = 5"
+        line: 'maxretry = 3'
+      notify: restart_fail2ban
+
+    - name: Setting fail2ban log rotation
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/fail2ban
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /var/log/fail2ban.log {
+            daily
+            dateext
+            dateformat -%Y%m%d-%H%M%S
+            missingok
+            rotate 365
+            compress
+            delaycompress
+            su root root
+            create 640 root adm
+            postrotate
+              fail2ban-client flushlogs 1>/dev/null
+            endscript
+          }
+
+    - name: Enable SSH supervision
+      ansible.builtin.lineinfile:
+        path: /etc/fail2ban/jail.local
+        insertafter: '^\[sshd\]'
+        line: 'enabled = true'
+        state: present
+      notify: restart_fail2ban
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: Kernel System Security
+  tags: Kernel
   hosts:
     - server
   tasks:
-    - name: Create a new user
-      ansible.builtin.user:
-        name: "{{ SUDO_USER_NAME }}"
-        password: "{{ lookup('file', SUDO_USER_PASS) }}"
+    - name: Enable reverse path filtering for new network
+      ansible.posix.sysctl:
+        name: net.ipv4.conf.default.rp_filter
+        value: 1
+        sysctl_set: yes
         state: present
-        createhome: yes
-        shell: /bin/bash
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
 
-    - name: Add new user public key 
-      ansible.builtin.authorized_key:
-        user: "{{ SUDO_USER_NAME }}"
-        key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
+    - name: Enable reverse path filtering for current network
+      ansible.posix.sysctl:
+        name: net.ipv4.conf.all.rp_filter
+        value: 1
+        sysctl_set: yes
         state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
 
-    - name: Install sudo
-      ansible.builtin.apt:
-        name:
-          - sudo
-        state: latest
+    - name: Enable Log Martian Packets on all IPv4 Interfaces
+      ansible.posix.sysctl:
+        name: net.ipv4.conf.all.log_martians
+        value: 1
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
 
-    - name: Add new user to sudo group
-      ansible.builtin.blockinfile:
-        path: /etc/sudoers.d/{{ SUDO_USER_NAME }}
-        create: yes
-        block: |
-          {{ SUDO_USER_NAME}} ALL=(ALL:ALL) ALL
+    - name: Specifies the maximum number of TCP connections
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_max_syn_backlog
+        value: 2048
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Number of SYN packets the Kernel will send before giving up on the new connection
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_synack_retries
+        value: 2
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Cantidad de reintentos de envío del paquete SYN para establecer una nueva conexion
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_syn_retries
+        value: 5
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Ignore Bogus ICMP Error Responses on IPv4 Interfaces
+      ansible.posix.sysctl:
+        name: net.ipv4.icmp_ignore_bogus_error_responses
+        value: 1
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Ensure TCP SYN Cookies is enabled
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_syncookies
+        value: 1
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Enables the endpoints to keep a current measurement of the round-trip time (RTT) of the network between them
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_timestamps
+        value: 0
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
 
 - name: Enable notification via e-mail using postfix
   tags: SendOnlyPostfix
@@ -374,6 +571,71 @@
         enabled: true
         state: restarted
 
+- name: Enable e-mail notification for Unattended upgrades
+  tags: UnattendedUpgrades
+  hosts:
+    - server
+  tasks:
+    - name: Setting e-mail notification
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/53unattended-notification-local
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          Unattended-Upgrade::Mail "{{ EMAIL_NOTIFICATION }}";
+          Unattended-Upgrade::MailReport "only-on-error";
+      notify: restart_unattended
+
+  handlers:
+    - name: restart_unattended
+      ansible.builtin.systemd_service:
+        name: unattended-upgrades
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: Enable e-mail notification for fail2ban
+  tags: fail2ban
+  hosts:
+    - server
+  tasks:
+    - name: Setting e-mail notification destination
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^destemail ="
+        line: "destemail = {{ EMAIL_NOTIFICATION }}"
+      notify: restart_fail2ban
+
+    - name: Setting e-mail notification sender
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^sender ="
+        line: "sender = root@{{ ansible_fqdn }}"
+      notify: restart_fail2ban
+
+    - name: Setting MTA
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^mta = "
+        line: 'mta = mail'
+      notify: restart_fail2ban
+
+    - name: Setting notification action to e-mail
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^action = %(action_)s"
+        line: 'action = %(action_mwl)s'
+      notify: restart_fail2ban
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
 - name: Allow monitoring via SNMP
   tags: SNMP
   hosts:
@@ -394,6 +656,7 @@
         content: |
           sysLocation   {{ ansible_fqdn }}
           sysContact    {{ EMAIL_NOTIFICATION }}
+          sysServices   72
           agentaddress  udp:0.0.0.0:161,udp6:[::]:161
           view          all included .1
           rocommunity   {{ SNMP_COMMUNITY }} default -V all
@@ -408,7 +671,7 @@
         enabled: true
         state: restarted
 
-- name: Monitoring Resources
+- name: Monitoring resources
   tags: Monit
   hosts:
     - server
@@ -470,6 +733,20 @@
             if swap usage > 25% then alert
           check filesystem root with path /
             if space usage > 70% then alert
+      notify: restart_monit
+
+    - name: Set the mail server
+      ansible.builtin.lineinfile:
+        dest: /etc/monit/monitrc
+        regexp: "^set mailserver "
+        line: 'set mailserver localhost'
+      notify: restart_monit
+
+    - name: Setting e-mail notification
+      ansible.builtin.lineinfile:
+        dest: /etc/monit/monitrc
+        regexp: "^set alert "
+        line: 'set alert {{ EMAIL_NOTIFICATION }}'
       notify: restart_monit
 
   handlers:
@@ -552,6 +829,133 @@
         state: link
       notify: restart_apache
 
+    - name: Install apache security module
+      ansible.builtin.apt:
+        name:
+          - modsecurity-crs
+          - libapache2-mod-security2
+        state: latest
+
+    - name: Check if a local config file exist
+      ansible.builtin.stat:
+        path: /etc/modsecurity/modsecurity.conf
+      register: file_check
+
+    - name: Create a local config file
+      ansible.builtin.copy:
+        src: /etc/modsecurity/modsecurity.conf-recommended
+        dest: /etc/modsecurity/modsecurity.conf
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0644'
+      when: file_check.stat.exists == false
+      notify: restart_apache
+
+    - name: Enable security module
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - security2.load
+         - security2.conf
+      notify: restart_apache
+
+    - name: Enable Rule Engine
+      ansible.builtin.lineinfile:
+        dest: /etc/modsecurity/modsecurity.conf
+        regexp: "^SecRuleEngine"
+        line: 'SecRuleEngine On'
+      notify: restart_apache
+
+    - name: Setting Tokens to Prod
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^ServerTokens"
+        line: 'ServerTokens Prod'
+      notify: restart_apache
+
+    - name: Disable Signature
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^ServerSignature"
+        line: 'ServerSignature Off'
+      notify: restart_apache
+
+    - name: Install apache evasive module
+      ansible.builtin.apt:
+        name:
+          - libapache2-mod-evasive
+        state: latest
+
+    - name: Enable evasive module
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - evasive.load
+         - evasive.conf
+      notify: restart_apache
+
+    - name: Setting the Track of who is accesing what
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSHashTableSize"
+        line: '    DOSHashTableSize    3079'
+      notify: restart_apache
+
+    - name: Setting the threshold for the number of requests for the same page
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSPageCount"
+        line: '    DOSPageCount        2'
+      notify: restart_apache
+
+    - name: Setting the threshold for the total number of requests for any object by the same client per site
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSSiteCount"
+        line: '    DOSSiteCount        50'
+      notify: restart_apache
+
+    - name: Setting the interval used in the page count
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSPageInterval"
+        line: '    DOSPageInterval     1'
+      notify: restart_apache
+
+    - name: Setting the interval used in the site count
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSSiteInterval"
+        line: '    DOSSiteInterval     1'
+      notify: restart_apache
+
+    - name: Setting the amount of time (in seconds) that an IP is blocked
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSBlockingPeriod"
+        line: '    DOSBlockingPeriod   10'
+      notify: restart_apache
+
+    - name: Creating the log directory
+      ansible.builtin.file:
+        path: /var/log/mod_evasive
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Setting the log directory location
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSLogDir"
+        line: '    DOSLogDir           "/var/log/mod_evasive"'
+      notify: restart_apache
+
     - name: Install MariaDB
       ansible.builtin.apt:
         name:
@@ -571,6 +975,30 @@
           - php-fpm
         state: latest
 
+    - name: Enable PHP-FPM modules for Apache
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - proxy.load
+         - proxy.conf
+         - proxy_fcgi.load
+         - setenvif.load
+         - setenvif.conf
+         - php8.4.load
+         - php8.4.conf
+      notify: restart_apache
+
+    - name: Enable PHP-FPM configuration for Apache
+      ansible.builtin.file:
+        src: /etc/apache2/conf-available/{{ item }}
+        dest: /etc/apache2/conf-enabled/{{ item }}
+        state: link
+      loop:
+         - php8.4-fpm.conf
+      notify: restart_apache
+
     - name: Install PHP support for Apache
       ansible.builtin.apt:
         name:
@@ -583,6 +1011,149 @@
           - php-mysql
         state: latest
 
+    - name: Install PHP common dependencies
+      ansible.builtin.apt:
+        name:
+          - php-cli
+          - php-zip
+          - php-xml
+          - php-curl
+          - php-common
+          - php-mbstring
+        state: latest
+
+    - name: Setting PHP time zone
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^;date.timezone ='
+        line: "date.timezone = America/Havana"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Increase PHP memory limit
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^memory_limit ='
+        line: "memory_limit = 512M"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Increase PHP execution time limit
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^max_execution_time ='
+        line: "max_execution_time = 360"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Increase PHP filesize limit to upload
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^upload_max_filesize ='
+        line: "upload_max_filesize = 200M"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Increase PHP size of POST data limit
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^post_max_size ='
+        line: "post_max_size = 200M"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Increase PHP input time limit
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^max_input_time ='
+        line: "max_input_time = 300"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Enable PHP opcache
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^;opcache.enable='
+        line: "opcache.enable=1"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Increase PHP amount of memory for interned strings for opcache
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^;opcache.interned_strings_buffer='
+        line: "opcache.interned_strings_buffer=16"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Setting PHP maximum number of keys for opcache
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^;opcache.max_accelerated_files='
+        line: "opcache.max_accelerated_files=10000"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Setting PHP opcache shared memory
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^;opcache.memory_consumption='
+        line: "opcache.memory_consumption=128"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Setting PHP opcache how often to check file for changes
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^;opcache.revalidate_freq='
+        line: "opcache.revalidate_freq=1"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
+    - name: Enable PHP opcache comments
+      ansible.builtin.lineinfile:
+        dest: '{{ item }}'
+        regexp: '^;opcache.save_comments='
+        line: "opcache.save_comments=1"
+      loop:
+        - '/etc/php/8.4/apache2/php.ini'
+        - '/etc/php/8.4/cli/php.ini'
+        - '/etc/php/8.4/fpm/php.ini'
+      notify: restart_php
+
   handlers:
     - name: restart_apache
       ansible.builtin.systemd_service:
@@ -591,86 +1162,134 @@
         enabled: true
         state: restarted
 
-- name: Install Nextcloud
+    - name: restart_php
+      ansible.builtin.systemd_service:
+        name: php8.4-fpm
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: Nextcloud
   tags: nextcloud
   hosts:
     - nextcloud
   tasks:
-    - name: Install PHP dependencies
-      ansible.builtin.apt:
-        name:
-          - php-gd
-          - php-cli
-          - php-gmp
-          - php-xml
-          - php-zip
-          - php-apcu
-          - php-curl
-          - php-intl
-          - php-ldap
-          - php-bcmath
-          - php-mbstring
-          - php-imagick
-        state: latest
+    - name: Check if nextcloud are installed
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/config/config.php
+      register: file_check
 
-    - name: Install software dependencies
-      ansible.builtin.apt:
-        name:
-          - imagemagick-7.q16
-          - unzip
-        state: latest
-
-    - name: Create nextcloud site configuration
+    - name: Download nextcloud archive
       ansible.builtin.copy:
-        dest: /etc/apache2/sites-available/nextcloud.conf
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          <VirtualHost *:443>
-            DocumentRoot  "/var/www/nextcloud"
-            ServerName    {{ ansible_fqdn }}
-            ServerAlias   {{ NEXTCLOUD_HOST_ALIAS }}.{{ ansible_domain }}
-            ErrorLog ${APACHE_LOG_DIR}/error.log
-            CustomLog ${APACHE_LOG_DIR}/access.log combined
-            SSLEngine on
-            SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
-            SSLCertificateKeyFile   /etc/ssl/private/ssl-cert-snakeoil.key
-            <FilesMatch "\.(?:cgi|shtml|phtml|php)$">
-                    SSLOptions +StdEnvVars
-            </FilesMatch>
-            <Directory /usr/lib/cgi-bin>
-                    SSLOptions +StdEnvVars
-            </Directory>
-            <Directory "/var/www/nextcloud/">
-              Options MultiViews FollowSymlinks
-              AllowOverride All
-              Order allow,deny
-              Allow from all
-            </Directory>
-          </VirtualHost>
-      notify: restart_apache
+        src: nextcloud-32.0.2.tar.gz
+        dest: /tmp/nextcloud.tar.gz
+      when: file_check.stat.exists == false
 
-    - name: Enable nextcloud SSL site
-      ansible.builtin.file:
-        src: /etc/apache2/sites-available/nextcloud.conf
-        dest: /etc/apache2/sites-enabled/nextcloud.conf
-        state: link
-      notify: restart_apache
+    - name: Extract nextcloud archive
+      ansible.builtin.unarchive:
+        src: "/tmp/nextcloud.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
 
-    - name: Enable apache modules for nextcloud
+    - name: Copy nextcloud folder to /var/www
+      ansible.builtin.copy:
+        src: /tmp/nextcloud/
+        dest: /var/www/nextcloud/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Removing temporal files
       ansible.builtin.file:
-        src: /etc/apache2/mods-available/{{ item }}
-        dest: /etc/apache2/mods-enabled/{{ item }}
-        state: link
+          path: "{{ item }}"
+          state: absent
       loop:
-         - dir.load
-         - dir.conf
-         - env.load
-         - headers.load
-         - mime.load
-         - mime.conf
-      notify: restart_apache
+         - /tmp/nextcloud.zip
+         - /tmp/nextcloud
+
+    - name: Create data directory for the nextcloud
+      ansible.builtin.file:
+        path: /var/www/nextcloud/data
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Check if Document Server Community are installed
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/apps/documentserver_community/README.md
+      register: file_check
+
+    - name: Download Document Server Community archive
+      ansible.builtin.copy:
+        src: documentserver_community-0.2.1.tar.gz
+        dest: /tmp/documentserver_community.tar.gz
+      when: file_check.stat.exists == false
+
+    - name: Extract Document Server Community archive
+      ansible.builtin.unarchive:
+        src: "/tmp/documentserver_community.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
+
+    - name: Copy Document Server Community folder to nextcloud apps
+      ansible.builtin.copy:
+        src: /tmp/documentserver_community/
+        dest: /var/www/nextcloud/apps/documentserver_community/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Removing temporal files
+      ansible.builtin.file:
+          path: "{{ item }}"
+          state: absent
+      loop:
+         - /tmp/documentserver_community.tar.gz
+         - /tmp/documentserver_community
+
+    - name: Check if OnlyOffice are installed
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/apps/onlyoffice/README.md
+      register: file_check
+
+    - name: Download OnlyOffice archive
+      ansible.builtin.copy:
+        src: onlyoffice-9.12.0.tar.gz
+        dest: /tmp/onlyoffice.tar.gz
+      when: file_check.stat.exists == false
+
+    - name: Extract OnlyOffice archive
+      ansible.builtin.unarchive:
+        src: "/tmp/onlyoffice.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
+
+    - name: Copy OnlyOffice folder to nextcloud apps
+      ansible.builtin.copy:
+        src: /tmp/onlyoffice/
+        dest: /var/www/nextcloud/apps/onlyoffice/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Removing temporal files
+      ansible.builtin.file:
+          path: "{{ item }}"
+          state: absent
+      loop:
+         - /tmp/onlyoffice.tar.gz
+         - /tmp/onlyoffice
 
     - name: Create nextcloud database
       ansible.builtin.mysql_db:
@@ -685,89 +1304,24 @@
         host: 'localhost'
         state: present
 
-    - name: Increase PHP memory limit
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^memory_limit ='
-        line: "memory_limit = 512M"
-      notify: restart_apache
-
-    - name: Increase PHP filesize limit to upload
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^upload_max_filesize ='
-        line: "upload_max_filesize = 200M"
-      notify: restart_apache
-
-    - name: Increase PHP execution time limit
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^max_execution_time ='
-        line: "max_execution_time = 360"
-      notify: restart_apache
-
-    - name: Increase PHP size of POST data limit
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^post_max_size ='
-        line: "post_max_size = 200M"
-      notify: restart_apache
-
-    - name: Setting PHP time zone
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^;date.timezone ='
-        line: "date.timezone = America/Havana"
-      notify: restart_apache
-
-    - name: Enable PHP opcache
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^;opcache.enable='
-        line: "opcache.enable=1"
-      notify: restart_apache
-
-    - name: Increase PHP amount of memory for interned strings for opcache
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^;opcache.interned_strings_buffer='
-        line: "opcache.interned_strings_buffer=16"
-      notify: restart_apache
-
-    - name: Setting PHP maximum number of keys for opcache
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^;opcache.max_accelerated_files='
-        line: "opcache.max_accelerated_files=10000"
-      notify: restart_apache
-
-    - name: Setting PHP opcache shared memory
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^;opcache.memory_consumption='
-        line: "opcache.memory_consumption=128"
-      notify: restart_apache
-
-    - name: Setting PHP opcache how often to check file for changes
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^;opcache.revalidate_freq='
-        line: "opcache.revalidate_freq=1"
-      notify: restart_apache
-
-    - name: Enable PHP opcache comments
-      ansible.builtin.lineinfile:
-        dest: /etc/php/8.4/apache2/php.ini
-        regexp: '^;opcache.save_comments='
-        line: "opcache.save_comments=1"
-      notify: restart_apache
+    - name: Install nextcloud PHP dependencies
+      ansible.builtin.apt:
+        name:
+          - php-gd
+          - php-gmp
+          - php-apcu
+          - php-intl
+          - php-ldap
+          - php-bcmath
+          - php-imagick
+        state: latest
 
     - name: Enable CLI to PHP module APCU
       ansible.builtin.lineinfile:
         dest: /etc/php/8.4/mods-available/apcu.ini
         regexp: '^apc.enable_cli='
         line: "apc.enable_cli=1"
-      notify: restart_apache
+      notify: restart_php
 
     - name: Enable PHP module for fpm
       ansible.builtin.file:
@@ -781,7 +1335,7 @@
         - bcmath
         - imagick
         - zip
-      notify: restart_apache
+      notify: restart_php
 
     - name: Enable PHP module for apache
       ansible.builtin.file:
@@ -795,7 +1349,7 @@
         - bcmath
         - imagick
         - zip
-      notify: restart_apache
+      notify: restart_php
 
     - name: Enable PHP module for cli
       ansible.builtin.file:
@@ -809,46 +1363,7 @@
         - bcmath
         - imagick
         - zip
-      notify: restart_apache
-
-    - name: Check if nextcloud are installed
-      ansible.builtin.stat:
-        path: /var/www/nextcloud/config/config.php
-      register: file_check
-
-    - name: Download nextcloud archive
-      ansible.builtin.copy:
-        src: nextcloud-32.0.2.zip
-        dest: /tmp/nextcloud.zip
-      when: file_check.stat.exists == false
-
-    - name: Extract nextcloud archive
-      ansible.builtin.unarchive:
-        src: "/tmp/nextcloud.zip"
-        dest: "/tmp/"
-        remote_src: yes
-      when: file_check.stat.exists == false
-
-    - name: Copy nextcloud folder to /var/www
-      ansible.builtin.copy:
-        src: /tmp/nextcloud/
-        dest: /var/www/nextcloud/
-        remote_src: true
-        owner: www-data
-        group: www-data
-        mode: '0755'
-      notify: restart_apache
-      when: file_check.stat.exists == false
-
-    - name: Create data directory for the nextcloud
-      ansible.builtin.file:
-        path: /var/www/nextcloud/data
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
-      notify: restart_apache
-      when: file_check.stat.exists == false
+      notify: restart_php
 
     - name: Give execution permissions to OCC
       ansible.builtin.file:
@@ -918,118 +1433,12 @@
       notify: restart_apache
       when: file_check.stat.exists == false
 
-    - name: Remove execution permissions to OCC
-      ansible.builtin.file:
-        path: /var/www/nextcloud/occ
-        owner: www-data
-        group: www-data
-        mode: '0660'
-      when: file_check.stat.exists == false
-
-    - name: Removing temporal files
-      ansible.builtin.file:
-          path: "{{ item }}"
-          state: absent
-      loop:
-         - /tmp/nextcloud.zip
-         - /tmp/nextcloud
-
-    - name: Check if Document Server Community are installed
-      ansible.builtin.stat:
-        path: /var/www/nextcloud/apps/documentserver_community/README.md
-      register: file_check
-
-    - name: Download Document Server Community archive
-      ansible.builtin.copy:
-        src: documentserver_community-0.2.1.tar.gz
-        dest: /tmp/documentserver_community.tar.gz
-      when: file_check.stat.exists == false
-
-    - name: Extract Document Server Community archive
-      ansible.builtin.unarchive:
-        src: "/tmp/documentserver_community.tar.gz"
-        dest: "/tmp/"
-        remote_src: yes
-      when: file_check.stat.exists == false
-
-    - name: Copy Document Server Community folder to nextcloud apps
-      ansible.builtin.copy:
-        src: /tmp/documentserver_community/
-        dest: /var/www/nextcloud/apps/documentserver_community/
-        remote_src: true
-        owner: www-data
-        group: www-data
-        mode: '0755'
-      notify: restart_apache
-      when: file_check.stat.exists == false
-
-    - name: Give execution permissions to OCC
-      ansible.builtin.file:
-        path: /var/www/nextcloud/occ
-        owner: www-data
-        group: www-data
-        mode: '0755'
-      when: file_check.stat.exists == false
-
     - name: Enable Document Server Community on nextcloud with OCC
       ansible.builtin.shell: |
         sudo -u www-data \
           php /var/www/nextcloud/occ \
           app:enable documentserver_community
       notify: restart_apache
-      when: file_check.stat.exists == false
-
-    - name: Remove execution permissions to OCC
-      ansible.builtin.file:
-        path: /var/www/nextcloud/occ
-        owner: www-data
-        group: www-data
-        mode: '0660'
-      when: file_check.stat.exists == false
-
-    - name: Removing temporal files
-      ansible.builtin.file:
-          path: "{{ item }}"
-          state: absent
-      loop:
-         - /tmp/documentserver_community.tar.gz
-         - /tmp/documentserver_community
-
-    - name: Check if OnlyOffice are installed
-      ansible.builtin.stat:
-        path: /var/www/nextcloud/apps/onlyoffice/README.md
-      register: file_check
-
-    - name: Download OnlyOffice archive
-      ansible.builtin.copy:
-        src: onlyoffice-9.12.0.tar.gz
-        dest: /tmp/onlyoffice.tar.gz
-      when: file_check.stat.exists == false
-
-    - name: Extract OnlyOffice archive
-      ansible.builtin.unarchive:
-        src: "/tmp/onlyoffice.tar.gz"
-        dest: "/tmp/"
-        remote_src: yes
-      when: file_check.stat.exists == false
-
-    - name: Copy OnlyOffice folder to nextcloud apps
-      ansible.builtin.copy:
-        src: /tmp/onlyoffice/
-        dest: /var/www/nextcloud/apps/onlyoffice/
-        remote_src: true
-        owner: www-data
-        group: www-data
-        mode: '0755'
-      notify: restart_apache
-      when: file_check.stat.exists == false
-
-    - name: Give execution permissions to OCC
-      ansible.builtin.file:
-        path: /var/www/nextcloud/occ
-        owner: www-data
-        group: www-data
-        mode: '0755'
       when: file_check.stat.exists == false
 
     - name: Enable OnlyOffice on nextcloud with OCC
@@ -1048,18 +1457,279 @@
         mode: '0660'
       when: file_check.stat.exists == false
 
-    - name: Removing temporal files
+    - name: Create nextcloud site configuration
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/nextcloud.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:443>
+            DocumentRoot  "/var/www/nextcloud"
+            ServerName    {{ ansible_fqdn }}
+            ServerAlias   {{ NEXTCLOUD_HOST_ALIAS }}.{{ ansible_domain }}
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}/access.log combined
+            SSLEngine on
+            SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
+            SSLCertificateKeyFile   /etc/ssl/private/ssl-cert-snakeoil.key
+            <FilesMatch "\.(?:cgi|shtml|phtml|php)$">
+                    SSLOptions +StdEnvVars
+            </FilesMatch>
+            <Directory /usr/lib/cgi-bin>
+                    SSLOptions +StdEnvVars
+            </Directory>
+            <Directory "/var/www/nextcloud/">
+              Options MultiViews FollowSymlinks
+              AllowOverride All
+              Order allow,deny
+              Allow from all
+            </Directory>
+          </VirtualHost>
+      notify: restart_apache
+
+    - name: Enable nextcloud SSL site
       ansible.builtin.file:
-          path: "{{ item }}"
-          state: absent
+        src: /etc/apache2/sites-available/nextcloud.conf
+        dest: /etc/apache2/sites-enabled/nextcloud.conf
+        state: link
+      notify: restart_apache
+
+    - name: Enable apache modules for nextcloud
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
       loop:
-         - /tmp/onlyoffice.tar.gz
-         - /tmp/onlyoffice
+         - dir.load
+         - dir.conf
+         - env.load
+         - headers.load
+         - mime.load
+         - mime.conf
+      notify: restart_apache
+
+    - name: Install software dependencies
+      ansible.builtin.apt:
+        name:
+          - imagemagick-7.q16
+        state: latest
+
+    - name: Disable Rule Engine
+      ansible.builtin.lineinfile:
+        dest: /etc/modsecurity/modsecurity.conf
+        regexp: "^SecRuleEngine"
+        line: 'SecRuleEngine Off'
+      notify: restart_apache
 
   handlers:
     - name: restart_apache
       ansible.builtin.systemd_service:
         name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: Wordpress
+  tags: wordpress
+  hosts:
+    - wordpress
+  tasks:
+    - name: Install wordpress
+      ansible.builtin.apt:
+        name:
+          - wordpress
+          - wordpress-l10n
+        state: latest
+
+    - name: Create wordpress database
+      ansible.builtin.mysql_db:
+        name: "wordpress"
+        state: present
+
+    - name: Create wordpress user for wordpress database
+      ansible.builtin.mysql_user:
+        name: "{{ WORDPRESS_DATABASE_USER }}"
+        password: '{{ WORDPRESS_DATABASE_PASS }}'
+        priv: "wordpress.*:ALL"
+        host: 'localhost'
+        state: present
+
+    - name: Setting database for wordpress
+      ansible.builtin.copy:
+        dest: /etc/wordpress/config-default.php
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <?php
+            define('DB_NAME', 'wordpress');
+            define('DB_USER', '{{ WORDPRESS_DATABASE_USER }}');
+            define('DB_PASSWORD', '{{ WORDPRESS_DATABASE_PASS }}');
+            define('DB_HOST', 'localhost');
+            define('WP_CONTENT_DIR', '/var/lib/wordpress/wp-content');
+          ?>
+
+    - name: Create wordpress site configuration
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/wordpress.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:443>
+            DocumentRoot  "/usr/share/wordpress"
+            ServerName    {{ ansible_fqdn }}
+            ServerAlias   {{ WORDPRESS_HOST_ALIAS }}.{{ ansible_domain }}
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}/access.log combined
+            SSLEngine on
+            SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
+            SSLCertificateKeyFile   /etc/ssl/private/ssl-cert-snakeoil.key
+            <FilesMatch "\.(?:cgi|shtml|phtml|php)$">
+                    SSLOptions +StdEnvVars
+            </FilesMatch>
+            <Directory /usr/lib/cgi-bin>
+                    SSLOptions +StdEnvVars
+            </Directory>
+            Alias /wp-content /var/lib/wordpress/wp-content
+            <Directory /usr/share/wordpress>
+                Options FollowSymLinks
+                AllowOverride Limit Options FileInfo
+                DirectoryIndex index.php
+                Require all granted
+            </Directory>
+            <Directory /var/lib/wordpress/wp-content>
+                Options FollowSymLinks
+                Require all granted
+            </Directory>
+          </VirtualHost>
+      notify: restart_apache
+
+    - name: Enable wordpress SSL site
+      ansible.builtin.file:
+        src: /etc/apache2/sites-available/wordpress.conf
+        dest: /etc/apache2/sites-enabled/wordpress.conf
+        state: link
+      notify: restart_apache
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+    - name: restart_php
+      ansible.builtin.systemd_service:
+        name: php8.4-fpm
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: Zabbix
+  tags: zabbix
+  hosts:
+    - zabbix
+  tasks:
+    - name: Install zabbix
+      ansible.builtin.apt:
+        name:
+          - zabbix-agent2
+          - zabbix-server-mysql
+          - zabbix-frontend-php
+        state: latest
+
+    - name: Create zabbix database
+      ansible.builtin.mysql_db:
+        name: "zabbix"
+        state: present
+
+    - name: Create zabbix user for zabbix database
+      ansible.builtin.mysql_user:
+        name: "{{ ZABBIX_DATABASE_USER }}"
+        password: '{{ ZABBIX_DATABASE_PASS }}'
+        priv: "zabbix.*:ALL"
+        host: 'localhost'
+        state: present
+
+    - name: Setting database user
+      ansible.builtin.lineinfile:
+        dest: /etc/zabbix/zabbix_server.conf
+        regexp: "^DBUser="
+        line: 'DBUser={{ ZABBIX_DATABASE_USER }}'
+      notify: restart_apache
+
+    - name: Setting database password
+      ansible.builtin.lineinfile:
+        dest: /etc/zabbix/zabbix_server.conf
+        regexp: "^# DBPassword="
+        line: 'DBPassword={{ ZABBIX_DATABASE_PASS }}'
+      notify: restart_apache
+
+    - name: Create zabbix site configuration
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/zabbix.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:443>
+            DocumentRoot  "/usr/share/zabbix"
+            ServerName    {{ ansible_fqdn }}
+            ServerAlias   {{ ZABBIX_HOST_ALIAS }}.{{ ansible_domain }}
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}/access.log combined
+            SSLEngine on
+            SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
+            SSLCertificateKeyFile   /etc/ssl/private/ssl-cert-snakeoil.key
+            <FilesMatch "\.(?:cgi|shtml|phtml|php)$">
+              SSLOptions +StdEnvVars
+            </FilesMatch>
+            <Directory /usr/lib/cgi-bin>
+              SSLOptions +StdEnvVars
+            </Directory>
+            <Directory "/usr/share/zabbix">
+              Options FollowSymLinks
+              AllowOverride None
+              Require all granted
+              <IfModule mod_php8.2.c>
+                php_value max_execution_time 300
+                php_value memory_limit 128M
+                php_value post_max_size 16M
+                php_value upload_max_filesize 2M
+                php_value max_input_time 300
+                php_value date.timezone America/Havana
+              </IfModule>
+            </Directory>
+            <Directory ~ "^/usr/share/zabbix/(conf|app|include|local)/">
+              Require all denied
+              <files *.php>
+                Require all denied
+              </files>
+            </Directory>
+          </VirtualHost>
+      notify: restart_apache
+
+    - name: Enable zabbix SSL site
+      ansible.builtin.file:
+        src: /etc/apache2/sites-available/zabbix.conf
+        dest: /etc/apache2/sites-enabled/zabbix.conf
+        state: link
+      notify: restart_apache
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+    - name: restart_php
+      ansible.builtin.systemd_service:
+        name: php8.4-fpm
         masked: no
         enabled: true
         state: restarted

@@ -7,6 +7,12 @@ wget \
 wget \
   -c \
   -t inf \
+  -O "nextcloud-32.0.2.tar.gz" \
+  "https://download.nextcloud.com/server/releases/nextcloud-32.0.2.tar.gz"
+
+wget \
+  -c \
+  -t inf \
   -O "documentserver_community-0.2.1.tar.gz" \
   "https://github.com/chadek/documentserver_community/releases/download/v0.2.1/documentserver_community.tar.gz"
 
