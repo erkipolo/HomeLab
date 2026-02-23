@@ -2,71 +2,8 @@
 # This config is designed to work on
 # Debian 13.3 trixie and may work with
 # other similar distros
-- name: Self hosted proxmox configuration
-  tags: SelfHosted
-  hosts:
-    - proxmox
-  tasks:
-    - name: Add proxmox repositories URL to hosts
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        regexp: '{{ proxmox_self_hosted_find }}'
-        line: "{{ proxmox_self_hosted_hosts }}"
-
-- name: Config proxmox repositories
-  tags: Repositories
-  hosts:
-    - proxmox
-  tasks:
-    - name: Delete enterprise proxmox config file
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - /etc/apt/sources.list.d/pve-enterprise.sources
-
-    - name: Add proxmox main repositories
-      ansible.builtin.deb822_repository:
-        name: proxmox
-        types: deb
-        uris: http://download.proxmox.com/debian/pve
-        suites:
-          - trixie
-        components:
-          - pve-no-subscription
-        architectures: amd64
-        signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
-        state: present
-
-    - name: Add proxmox ceph repositories
-      ansible.builtin.deb822_repository:
-        name: ceph
-        types: deb
-        uris: http://download.proxmox.com/debian/ceph-squid
-        suites:
-          - trixie
-        components:
-          - no-subscription
-        architectures: amd64
-        signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
-        state: present
-
-- name: Add pam user to proxmox
-  tags: AdminPamUserPve
-  hosts:
-    - proxmox
-  tasks:
-    - name: Create a proxmox PAM user Administrator
-      ansible.builtin.blockinfile:
-        path: /etc/pve/user.cfg
-        create: yes
-        block: |
-          user:{{ SUDO_USER_NAME}}@pam:1:0::::::
-          group:{{ SUDO_USER_NAME}}:{{ SUDO_USER_NAME}}@pam::
-          acl:1:/:@{{ SUDO_USER_NAME}}:Administrator:
-
-- name: Self hosted debian configuration
-  tags: SelfHosted
+- name: selfhosted debian repositories configuration
+  tags: repositories
   hosts:
     - debian
   tasks:
@@ -85,8 +22,18 @@
         content: |
           acquire::check-valid-until "0";
 
+- name: selfhosted proxmox repositories configuration
+  tags: repositories
+  hosts:
+    - proxmox
+  tasks:
+    - name: Add proxmox repositories URL to hosts
+      ansible.builtin.lineinfile:
+        dest: /etc/hosts
+        regexp: '{{ proxmox_self_hosted_find }}'
+        line: "{{ proxmox_self_hosted_hosts }}"
 
-- name: Config timezone
+- name: debian timezone configuration
   tags: timezone
   hosts:
     - debian
@@ -95,17 +42,8 @@
       ansible.builtin.timezone:
         name: "America/Havana"
 
-#- name: Config locales
-#  tags: locales
-#  hosts:
-#    - debian
-#  tasks:
-#    - name: Set locales
-#      ansible.builtin.locales:
-#        name: "en_US.UTF-8"
-
-- name: Config debian repositories
-  tags: Repositories
+- name: debian repositories configuration
+  tags: repositories
   hosts:
     - debian
   tasks:
@@ -145,8 +83,8 @@
         signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
         state: present
 
-- name: Upgrade debian systems
-  tags: Upgrade
+- name: debian upgrade distribution
+  tags: upgrade
   hosts:
     - debian
   tasks:
@@ -159,40 +97,8 @@
         state: latest
         cache_valid_time: 0
 
-- name: Add sudo user
-  tags: SudoUser
-  hosts:
-    - debian
-  tasks:
-    - name: Create a new user
-      ansible.builtin.user:
-        name: "{{ SUDO_USER_NAME }}"
-        password: "{{ lookup('file', SUDO_USER_PASS) }}"
-        state: present
-        createhome: yes
-        shell: /bin/bash
-
-    - name: Add new user public key 
-      ansible.builtin.authorized_key:
-        user: "{{ SUDO_USER_NAME }}"
-        key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
-        state: present
-
-    - name: Install sudo
-      ansible.builtin.apt:
-        name:
-          - sudo
-        state: latest
-
-    - name: Add new user to sudo group
-      ansible.builtin.blockinfile:
-        path: /etc/sudoers.d/{{ SUDO_USER_NAME }}
-        create: yes
-        block: |
-          {{ SUDO_USER_NAME}} ALL=(ALL:ALL) ALL
-
-- name: Enable Unattended upgrades
-  tags: UnattendedUpgrades
+- name: debian upgrade unattended install
+  tags: upgrade-unattended
   hosts:
     - debian
   tasks:
@@ -266,8 +172,40 @@
         enabled: true
         state: restarted
 
-- name: Install HIPS
-  tags: fail2ban
+- name: debian sudo user with public key
+  tags: user
+  hosts:
+    - debian
+  tasks:
+    - name: Create a new user
+      ansible.builtin.user:
+        name: "{{ SUDO_USER_NAME }}"
+        password: "{{ lookup('file', SUDO_USER_PASS) }}"
+        state: present
+        createhome: yes
+        shell: /bin/bash
+
+    - name: Add new user public key 
+      ansible.builtin.authorized_key:
+        user: "{{ SUDO_USER_NAME }}"
+        key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
+        state: present
+
+    - name: Install sudo
+      ansible.builtin.apt:
+        name:
+          - sudo
+        state: latest
+
+    - name: Add new user to sudo group
+      ansible.builtin.blockinfile:
+        path: /etc/sudoers.d/{{ SUDO_USER_NAME }}
+        create: yes
+        block: |
+          {{ SUDO_USER_NAME}} ALL=(ALL:ALL) ALL
+
+- name: debian hips install
+  tags: hips
   hosts:
     - debian
   tasks:
@@ -328,6 +266,19 @@
             endscript
           }
 
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian hips ssh supervision
+  tags: hips
+  hosts:
+    - debian
+  tasks:
     - name: Enable SSH supervision
       ansible.builtin.lineinfile:
         path: /etc/fail2ban/jail.local
@@ -344,8 +295,167 @@
         enabled: true
         state: restarted
 
-- name: Kernel System Security
-  tags: Kernel
+- name: debian snmp install
+  tags: snmp
+  hosts:
+    - debian
+  tasks:
+    - name: Install SNMP
+      ansible.builtin.apt:
+        name:
+          - snmpd
+        state: latest
+
+    - name: Enable SNMP Interfaces Access
+      ansible.builtin.copy:
+        dest: /etc/snmp/snmpd.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          sysLocation   {{ ansible_fqdn }}
+          sysContact    {{ SNMP_CONTACT }}
+          sysServices   72
+          agentaddress  udp:0.0.0.0:161,udp6:[::]:161
+          view          all included .1
+          rocommunity   {{ SNMP_COMMUNITY }} default -V all
+          rocommunity6  {{ SNMP_COMMUNITY }} default -V all
+      notify: restart_snmpd
+
+  handlers:
+    - name: restart_snmpd
+      ansible.builtin.systemd_service:
+        name: snmpd
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian monitoring install
+  tags: monit
+  hosts:
+    - debian
+  tasks:
+    - name: Install monit
+      ansible.builtin.apt:
+        name:
+          - monit
+        state: latest
+
+    - name: Check resources each 1 min
+      ansible.builtin.lineinfile:
+        dest: /etc/monit/monitrc
+        regexp: "^set daemon "
+        line: 'set daemon 60'
+      notify: restart_monit
+
+    - name: Set log file location
+      ansible.builtin.lineinfile:
+        dest: /etc/monit/monitrc
+        regexp: "^set logfile "
+        line: 'set logfile /var/log/monit.log'
+      notify: restart_monit
+
+    - name: Setting monit log rotation
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/monit
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /var/log/monit.log {
+            daily
+            dateext
+            dateformat -%Y%m%d-%H%M%S
+            missingok
+            rotate 365
+            compress
+            delaycompress
+            su root root
+            create 640 root adm
+            postrotate
+              invoke-rc.d monit reload > /dev/null
+            endscript
+          }
+
+    - name: Config how to monitor the resources
+      ansible.builtin.copy:
+        dest: /etc/monit/conf.d/CheckResources
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          check system $HOST
+            if loadavg (1min) per core > 2 for 5 cycles then alert
+            if loadavg (5min) per core > 1.5 for 10 cycles then alert
+            if cpu usage > 95% for 10 cycles then alert
+            if memory usage > 75% then alert
+            if swap usage > 25% then alert
+          check filesystem root with path /
+            if space usage > 70% then alert
+      notify: restart_monit
+
+  handlers:
+    - name: restart_monit
+      ansible.builtin.systemd_service:
+        name: monit
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: proxmox repositories configuration
+  tags: repositories
+  hosts:
+    - proxmox
+  tasks:
+    - name: Delete enterprise proxmox config file
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/pve-enterprise.sources
+
+    - name: Add proxmox main repositories
+      ansible.builtin.deb822_repository:
+        name: proxmox
+        types: deb
+        uris: http://download.proxmox.com/debian/pve
+        suites:
+          - trixie
+        components:
+          - pve-no-subscription
+        architectures: amd64
+        signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+        state: present
+
+    - name: Add proxmox ceph repositories
+      ansible.builtin.deb822_repository:
+        name: ceph
+        types: deb
+        uris: http://download.proxmox.com/debian/ceph-squid
+        suites:
+          - trixie
+        components:
+          - no-subscription
+        architectures: amd64
+        signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+        state: present
+
+- name: proxmox pam pve user
+  tags: user
+  hosts:
+    - proxmox
+  tasks:
+    - name: Create a proxmox PAM user Administrator
+      ansible.builtin.blockinfile:
+        path: /etc/pve/user.cfg
+        create: yes
+        block: |
+          user:{{ SUDO_USER_NAME}}@pam:1:0::::::
+          group:{{ SUDO_USER_NAME}}:{{ SUDO_USER_NAME}}@pam::
+          acl:1:/:@{{ SUDO_USER_NAME}}:Administrator:
+
+- name: debian server kernel security configuration
+  tags: kernel
   hosts:
     - server
   tasks:
@@ -430,8 +540,8 @@
         reload: yes
         sysctl_file: /etc/sysctl.d/90-kernel.conf
 
-- name: Enable notification via e-mail using postfix
-  tags: SendOnlyPostfix
+- name: debian server e-mail notification install
+  tags: notification
   hosts:
     - server
   tasks:
@@ -571,14 +681,14 @@
         enabled: true
         state: restarted
 
-- name: Enable e-mail notification for Unattended upgrades
-  tags: UnattendedUpgrades
+- name: debian server upgrade unattended notification via e-mail
+  tags: notification
   hosts:
     - server
   tasks:
     - name: Setting e-mail notification
       ansible.builtin.copy:
-        dest: /etc/apt/apt.conf.d/53unattended-notification-local
+        dest: /etc/apt/apt.conf.d/53unattended-upgrades-notification
         owner: root
         group: root
         mode: '0644'
@@ -595,8 +705,8 @@
         enabled: true
         state: restarted
 
-- name: Enable e-mail notification for fail2ban
-  tags: fail2ban
+- name: debian server hips notification via e-mail
+  tags: notification
   hosts:
     - server
   tasks:
@@ -636,105 +746,11 @@
         enabled: true
         state: restarted
 
-- name: Allow monitoring via SNMP
-  tags: SNMP
+- name: debian server monitoring notification via e-mail
+  tags: notification
   hosts:
     - server
   tasks:
-    - name: Install SNMP
-      ansible.builtin.apt:
-        name:
-          - snmpd
-        state: latest
-
-    - name: Enable SNMP Interfaces Access
-      ansible.builtin.copy:
-        dest: /etc/snmp/snmpd.conf
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          sysLocation   {{ ansible_fqdn }}
-          sysContact    {{ EMAIL_NOTIFICATION }}
-          sysServices   72
-          agentaddress  udp:0.0.0.0:161,udp6:[::]:161
-          view          all included .1
-          rocommunity   {{ SNMP_COMMUNITY }} default -V all
-          rocommunity6  {{ SNMP_COMMUNITY }} default -V all
-      notify: restart_snmpd
-
-  handlers:
-    - name: restart_snmpd
-      ansible.builtin.systemd_service:
-        name: snmpd
-        masked: no
-        enabled: true
-        state: restarted
-
-- name: Monitoring resources
-  tags: Monit
-  hosts:
-    - server
-  tasks:
-    - name: Install monit
-      ansible.builtin.apt:
-        name:
-          - monit
-        state: latest
-
-    - name: Check resources each 1 min
-      ansible.builtin.lineinfile:
-        dest: /etc/monit/monitrc
-        regexp: "^set daemon "
-        line: 'set daemon 60'
-      notify: restart_monit
-
-    - name: Set log file location
-      ansible.builtin.lineinfile:
-        dest: /etc/monit/monitrc
-        regexp: "^set logfile "
-        line: 'set logfile /var/log/monit.log'
-      notify: restart_monit
-
-    - name: Setting monit log rotation
-      ansible.builtin.copy:
-        dest: /etc/logrotate.d/monit
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          /var/log/monit.log {
-            daily
-            dateext
-            dateformat -%Y%m%d-%H%M%S
-            missingok
-            rotate 365
-            compress
-            delaycompress
-            su root root
-            create 640 root adm
-            postrotate
-              invoke-rc.d monit reload > /dev/null
-            endscript
-          }
-
-    - name: Config how to monitor the resources
-      ansible.builtin.copy:
-        dest: /etc/monit/conf.d/CheckResources
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          check system $HOST
-            if loadavg (1min) per core > 2 for 5 cycles then alert
-            if loadavg (5min) per core > 1.5 for 10 cycles then alert
-            if cpu usage > 95% for 10 cycles then alert
-            if memory usage > 75% then alert
-            if swap usage > 25% then alert
-          check filesystem root with path /
-            if space usage > 70% then alert
-      notify: restart_monit
-
     - name: Set the mail server
       ansible.builtin.lineinfile:
         dest: /etc/monit/monitrc
@@ -757,10 +773,11 @@
         enabled: true
         state: restarted
 
-- name: Install LAMP
-  tags: lamp
+- name: debian server apache install
+  tags: lamp, web
   hosts:
     - lamp
+    - web
   tasks:
     - name: Install apache
       ansible.builtin.apt:
@@ -829,6 +846,20 @@
         state: link
       notify: restart_apache
 
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian server apache security module
+  tags: lamp, web
+  hosts:
+    - lamp
+    - web
+  tasks:
     - name: Install apache security module
       ansible.builtin.apt:
         name:
@@ -883,6 +914,20 @@
         line: 'ServerSignature Off'
       notify: restart_apache
 
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian server apache evasive module
+  tags: lamp, web
+  hosts:
+    - lamp
+    - web
+  tasks:
     - name: Install apache evasive module
       ansible.builtin.apt:
         name:
@@ -956,6 +1001,20 @@
         line: '    DOSLogDir           "/var/log/mod_evasive"'
       notify: restart_apache
 
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian server mariadb install
+  tags: lamp, database
+  hosts:
+    - lamp
+    - database
+  tasks:
     - name: Install MariaDB
       ansible.builtin.apt:
         name:
@@ -968,6 +1027,11 @@
           - python3-mysqldb
         state: latest
 
+- name: debian server php install
+  tags: lamp
+  hosts:
+    - lamp
+  tasks:
     - name: Install PHP version fpm
       ansible.builtin.apt:
         name:
@@ -999,18 +1063,57 @@
          - php8.4-fpm.conf
       notify: restart_apache
 
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian server php install apache support
+  tags: lamp
+  hosts:
+    - lamp
+  tasks:
     - name: Install PHP support for Apache
       ansible.builtin.apt:
         name:
           - libapache2-mod-php
         state: latest
 
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian server php install mariadb support
+  tags: lamp
+  hosts:
+    - lamp
+  tasks:
     - name: Install MariaDB support for PHP
       ansible.builtin.apt:
         name:
           - php-mysql
         state: latest
 
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian server php common dependencies
+  tags: lamp
+  hosts:
+    - lamp
+  tasks:
     - name: Install PHP common dependencies
       ansible.builtin.apt:
         name:
@@ -1022,7 +1125,7 @@
           - php-mbstring
         state: latest
 
-    - name: Setting PHP time zone
+    - name: Setting PHP timezone
       ansible.builtin.lineinfile:
         dest: '{{ item }}'
         regexp: '^;date.timezone ='
@@ -1155,13 +1258,6 @@
       notify: restart_php
 
   handlers:
-    - name: restart_apache
-      ansible.builtin.systemd_service:
-        name: apache2
-        masked: no
-        enabled: true
-        state: restarted
-
     - name: restart_php
       ansible.builtin.systemd_service:
         name: php8.4-fpm
@@ -1169,7 +1265,7 @@
         enabled: true
         state: restarted
 
-- name: Nextcloud
+- name: debian server nextcloud install
   tags: nextcloud
   hosts:
     - nextcloud
@@ -1207,7 +1303,7 @@
           path: "{{ item }}"
           state: absent
       loop:
-         - /tmp/nextcloud.zip
+         - /tmp/nextcloud.tar.gz
          - /tmp/nextcloud
 
     - name: Create data directory for the nextcloud
@@ -1530,7 +1626,14 @@
         enabled: true
         state: restarted
 
-- name: Wordpress
+    - name: restart_php
+      ansible.builtin.systemd_service:
+        name: php8.4-fpm
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian server wordpress install
   tags: wordpress
   hosts:
     - wordpress
@@ -1621,14 +1724,7 @@
         enabled: true
         state: restarted
 
-    - name: restart_php
-      ansible.builtin.systemd_service:
-        name: php8.4-fpm
-        masked: no
-        enabled: true
-        state: restarted
-
-- name: Zabbix
+- name: debian server zabbix install
   tags: zabbix
   hosts:
     - zabbix
@@ -1726,11 +1822,3 @@
         masked: no
         enabled: true
         state: restarted
-
-    - name: restart_php
-      ansible.builtin.systemd_service:
-        name: php8.4-fpm
-        masked: no
-        enabled: true
-        state: restarted
-
