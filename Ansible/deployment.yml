@@ -1729,10 +1729,26 @@
   hosts:
     - zabbix
   tasks:
+    - name: INSTALAMOS LA LLAVE DEL SERVIDOR ZABBIX
+      ansible.builtin.apt:
+        deb: https://repo.zabbix.com/zabbix/7.0/debian/pool/main/z/zabbix-release/zabbix-release_latest+debian13_all.deb
+        state: present
+
+    - name: Update and Upgrade System
+      ansible.builtin.apt:
+        update_cache: yes
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+        state: latest
+        cache_valid_time: 0
+
     - name: Install zabbix
       ansible.builtin.apt:
         name:
           - zabbix-agent2
+          - zabbix-apache-conf
+          - zabbix-sql-scripts
           - zabbix-server-mysql
           - zabbix-frontend-php
         state: latest
@@ -1741,6 +1757,7 @@
       ansible.builtin.mysql_db:
         name: "zabbix"
         state: present
+      notify: import_schema
 
     - name: Create zabbix user for zabbix database
       ansible.builtin.mysql_user:
@@ -1755,14 +1772,14 @@
         dest: /etc/zabbix/zabbix_server.conf
         regexp: "^DBUser="
         line: 'DBUser={{ ZABBIX_DATABASE_USER }}'
-      notify: restart_apache
+      notify: restart_zabbix
 
     - name: Setting database password
       ansible.builtin.lineinfile:
         dest: /etc/zabbix/zabbix_server.conf
         regexp: "^# DBPassword="
         line: 'DBPassword={{ ZABBIX_DATABASE_PASS }}'
-      notify: restart_apache
+      notify: restart_zabbix
 
     - name: Create zabbix site configuration
       ansible.builtin.copy:
@@ -1789,20 +1806,65 @@
             <Directory "/usr/share/zabbix">
               Options FollowSymLinks
               AllowOverride None
-              Require all granted
-              <IfModule mod_php8.2.c>
+              Order allow,deny
+              Allow from all
+              <IfModule mod_php.c>
                 php_value max_execution_time 300
                 php_value memory_limit 128M
                 php_value post_max_size 16M
                 php_value upload_max_filesize 2M
                 php_value max_input_time 300
-                php_value date.timezone America/Havana
+                php_value max_input_vars 10000
+                php_value always_populate_raw_post_data -1
+              </IfModule>
+              <IfModule mod_php7.c>
+                php_value max_execution_time 300
+                php_value memory_limit 128M
+                php_value post_max_size 16M
+                php_value upload_max_filesize 2M
+                php_value max_input_time 300
+                php_value max_input_vars 10000
+                php_value always_populate_raw_post_data -1
               </IfModule>
             </Directory>
-            <Directory ~ "^/usr/share/zabbix/(conf|app|include|local)/">
-              Require all denied
+            <Directory "/usr/share/zabbix/conf">
+              Order deny,allow
+              Deny from all
               <files *.php>
-                Require all denied
+                Order deny,allow
+                Deny from all
+              </files>
+            </Directory>
+            <Directory "/usr/share/zabbix/app">
+              Order deny,allow
+              Deny from all
+              <files *.php>
+                Order deny,allow
+                Deny from all
+              </files>
+            </Directory>
+            <Directory "/usr/share/zabbix/include">
+              Order deny,allow
+              Deny from all
+              <files *.php>
+                Order deny,allow
+                Deny from all
+              </files>
+            </Directory>
+            <Directory "/usr/share/zabbix/local">
+              Order deny,allow
+              Deny from all
+              <files *.php>
+                Order deny,allow
+                Deny from all
+              </files>
+            </Directory>
+            <Directory "/usr/share/zabbix/vendor">
+              Order deny,allow
+              Deny from all
+              <files *.php>
+                Order deny,allow
+                Deny from all
               </files>
             </Directory>
           </VirtualHost>
@@ -1816,6 +1878,17 @@
       notify: restart_apache
 
   handlers:
+    - name: import_schema
+      ansible.builtin.shell: |
+        zcat /usr/share/zabbix-sql-scripts/mysql/server.sql.gz | mariadb --default-character-set=utf8mb4 -u {{ ZABBIX_DATABASE_USER }} -p'{{ ZABBIX_DATABASE_PASS }}' zabbix
+
+    - name: restart_zabbix
+      ansible.builtin.systemd_service:
+        name: zabbix-server
+        masked: no
+        enabled: true
+        state: restarted
+
     - name: restart_apache
       ansible.builtin.systemd_service:
         name: apache2

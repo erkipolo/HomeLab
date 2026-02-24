@@ -1,7 +1,0 @@
-- name: Update and Upgrade System
-  tags: Upgrade
-  ansible.builtin.apt:
-    upgrade: dist
-    update_cache: yes
-    cache_valid_time: 0
-    state: latest

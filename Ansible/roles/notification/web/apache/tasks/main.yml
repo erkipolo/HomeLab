@@ -1,8 +1,0 @@
-- name: ??????
-  tags: Apache
-  ansible.builtin.lineinfile:
-    dest: /etc/apache2/mods-available/evasive.conf
-    regexp: "^    #DOSEmailNotify"
-    line: '    DOSEmailNotify      {{ EMAIL_NOTIFICATION }}'
-  notify: restart_apache
-

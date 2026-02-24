@@ -1,6 +1,0 @@
-- name: restart_snmpd
-  ansible.builtin.systemd_service:
-    name: snmpd
-    masked: no
-    enabled: true
-    state: restarted
