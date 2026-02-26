@@ -4,12 +4,12 @@
     [proxmox]
       - repositories                  selfhosted proxmox repositories configuration
 [debian]
-  - timezone                          debian timezone configuration
   - repositories                      debian repositories configuration
   - upgrade distribution              debian upgrade distribution
+  - language spanish                  debian language spanish support
   - upgrade unattended                debian upgrade unattended install
   - sudo user                         debian sudo user with public key
-  - hips                              debian hips install
+  - hips install                      debian hips install
   - hips ssh                          debian hips ssh supervision
   - snmp                              debian snmp install
   - monitoring                        debian monitoring install

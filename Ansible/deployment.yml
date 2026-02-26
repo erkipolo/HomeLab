@@ -33,15 +33,6 @@
         regexp: '{{ proxmox_self_hosted_find }}'
         line: "{{ proxmox_self_hosted_hosts }}"
 
-- name: debian timezone configuration
-  tags: timezone
-  hosts:
-    - debian
-  tasks:
-    - name: Set timezone
-      ansible.builtin.timezone:
-        name: "America/Havana"
-
 - name: debian repositories configuration
   tags: repositories
   hosts:
@@ -96,6 +87,39 @@
         autoclean: yes
         state: latest
         cache_valid_time: 0
+
+- name: debian language spanish support
+  tags: language
+  hosts:
+    - debian
+  tasks:
+    - name: Install localisation for spanish
+      ansible.builtin.apt:
+        name:
+          - task-spanish
+        state: latest
+
+    - name: Ensure localisation files are available
+      ansible.builtin.locale_gen:
+        name:
+          - es_ES.UTF-8
+        state: present
+
+    - name: Enable spanish localisation short
+      ansible.builtin.lineinfile:
+        dest: /etc/default/locale
+        regexp: "^LANG="
+        line: 'LANG=es_ES.UTF-8'
+
+    - name: Enable spanish localisation large
+      ansible.builtin.lineinfile:
+        dest: /etc/default/locale
+        regexp: "^LANGUAGE="
+        line: 'LANGUAGE="es_ES:es"'
+
+    - name: Set timezone
+      ansible.builtin.timezone:
+        name: "America/Havana"
 
 - name: debian upgrade unattended install
   tags: upgrade-unattended
@@ -863,9 +887,18 @@
     - name: Install apache security module
       ansible.builtin.apt:
         name:
-          - modsecurity-crs
           - libapache2-mod-security2
         state: latest
+
+    - name: Enable apache security module
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - security2.load
+         - security2.conf
+      notify: restart_apache
 
     - name: Check if a local config file exist
       ansible.builtin.stat:
@@ -881,16 +914,6 @@
         group: root
         mode: '0644'
       when: file_check.stat.exists == false
-      notify: restart_apache
-
-    - name: Enable security module
-      ansible.builtin.file:
-        src: /etc/apache2/mods-available/{{ item }}
-        dest: /etc/apache2/mods-enabled/{{ item }}
-        state: link
-      loop:
-         - security2.load
-         - security2.conf
       notify: restart_apache
 
     - name: Enable Rule Engine
@@ -912,6 +935,41 @@
         dest: /etc/apache2/conf-available/security.conf
         regexp: "^ServerSignature"
         line: 'ServerSignature Off'
+      notify: restart_apache
+
+    - name: Allow access request bodies
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^SecRequestBodyAccess"
+        line: 'SecRequestBodyAccess On'
+      notify: restart_apache
+
+    - name: Allow access response bodies
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^SecResponseBodyAccess"
+        line: 'SecResponseBodyAccess On'
+      notify: restart_apache
+
+    - name: Which response MIME types do you want to inspect
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^SecResponseBodyMimeType"
+        line: 'SecResponseBodyMimeType text/plain text/html text/xml application/octet-stream'
+      notify: restart_apache
+
+    - name: The location where ModSecurity will keep its persistent data
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^SecDataDir"
+        line: 'SecDataDir /tmp/'
+      notify: restart_apache
+
+    - name: Install the OWASP Core Rule Set
+      ansible.builtin.apt:
+        name:
+          - modsecurity-crs
+        state: latest
       notify: restart_apache
 
   handlers:
@@ -1270,12 +1328,28 @@
   hosts:
     - nextcloud
   tasks:
+    - name: Check if NextCloud archive are downloaded
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/nextcloud-32.0.2.tar.gz
+      register: file_check
+
+    - name: Download NextCloud archive
+      delegate_to: localhost
+      get_url:
+        url: "https://download.nextcloud.com/server/releases/nextcloud-32.0.2.tar.gz"
+        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/nextcloud-32.0.2.tar.gz"
+        owner: "sysadmin"
+        group: "sysadmin"
+        mode: '0755'
+      when: file_check.stat.exists == false
+
     - name: Check if nextcloud are installed
       ansible.builtin.stat:
         path: /var/www/nextcloud/config/config.php
       register: file_check
 
-    - name: Download nextcloud archive
+    - name: upload nextcloud archive
       ansible.builtin.copy:
         src: nextcloud-32.0.2.tar.gz
         dest: /tmp/nextcloud.tar.gz
@@ -1315,12 +1389,28 @@
         mode: '0755'
       when: file_check.stat.exists == false
 
+    - name: Check if Document Server Community archive are downloaded
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz
+      register: file_check
+
+    - name: Download Document Server Community archive
+      delegate_to: localhost
+      get_url:
+        url: "https://github.com/chadek/documentserver_community/releases/download/v0.2.1/documentserver_community.tar.gz"
+        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz"
+        owner: "sysadmin"
+        group: "sysadmin"
+        mode: '0755'
+      when: file_check.stat.exists == false
+
     - name: Check if Document Server Community are installed
       ansible.builtin.stat:
         path: /var/www/nextcloud/apps/documentserver_community/README.md
       register: file_check
 
-    - name: Download Document Server Community archive
+    - name: upload Document Server Community archive
       ansible.builtin.copy:
         src: documentserver_community-0.2.1.tar.gz
         dest: /tmp/documentserver_community.tar.gz
@@ -1351,12 +1441,28 @@
          - /tmp/documentserver_community.tar.gz
          - /tmp/documentserver_community
 
+    - name: Check if OnlyOffice archive are downloaded
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz
+      register: file_check
+
+    - name: Download OnlyOffice archive
+      delegate_to: localhost
+      get_url:
+        url: "https://github.com/ONLYOFFICE/onlyoffice-nextcloud/releases/download/v9.12.0/onlyoffice.tar.gz"
+        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz"
+        owner: "sysadmin"
+        group: "sysadmin"
+        mode: '0755'
+      when: file_check.stat.exists == false
+
     - name: Check if OnlyOffice are installed
       ansible.builtin.stat:
         path: /var/www/nextcloud/apps/onlyoffice/README.md
       register: file_check
 
-    - name: Download OnlyOffice archive
+    - name: upload OnlyOffice archive
       ansible.builtin.copy:
         src: onlyoffice-9.12.0.tar.gz
         dest: /tmp/onlyoffice.tar.gz

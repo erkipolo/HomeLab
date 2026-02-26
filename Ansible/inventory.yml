@@ -27,6 +27,8 @@ all:
             debian_self_hosted_find:   '^192\.168\.56\.1 deb'
             debian_self_hosted_hosts:  '192.168.56.1 deb.debian.org security.debian.org'
           hosts:
+            ct00:
+            ct01:
             ct02:
           children:
             proxmox:
@@ -70,6 +72,7 @@ all:
                     NEXTCLOUD_DATABASE_USER: 'nextcloud'
                     NEXTCLOUD_DATABASE_PASS: 'nextcloud'
                   hosts:
+                    ct02:
                 wordpress:
                   vars:
                     WORDPRESS_HOST_ALIAS: 'wordpress'
@@ -84,4 +87,3 @@ all:
                     ZABBIX_DATABASE_USER: 'zabbix'
                     ZABBIX_DATABASE_PASS: 'zabbix'
                   hosts:
-                    ct01:
