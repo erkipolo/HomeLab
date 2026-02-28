@@ -53,6 +53,7 @@ all:
           vars:
             EMAIL_NOTIFICATION: 'admin@homelab.cu'
           hosts:
+            ct02:
           children:
             web:
               vars:
@@ -72,7 +73,6 @@ all:
                     NEXTCLOUD_DATABASE_USER: 'nextcloud'
                     NEXTCLOUD_DATABASE_PASS: 'nextcloud'
                   hosts:
-                    ct02:
                 wordpress:
                   vars:
                     WORDPRESS_HOST_ALIAS: 'wordpress'

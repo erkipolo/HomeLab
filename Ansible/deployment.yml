@@ -609,21 +609,21 @@
       ansible.builtin.lineinfile:
         dest: /etc/postfix/main.cf
         regexp: "^mydomain ="
-        line: '$mydomain = $myorigin'
+        line: 'mydomain = $myorigin'
       notify: restart_postfix
 
     - name: Config host name
       ansible.builtin.lineinfile:
         dest: /etc/postfix/main.cf
         regexp: "^myhostname ="
-        line: '$myhostname = {{ ansible_hostname }}'
+        line: 'myhostname = {{ ansible_hostname }}'
       notify: restart_postfix
 
     - name: Config destination domains
       ansible.builtin.lineinfile:
         dest: /etc/postfix/main.cf
         regexp: "^mydestination ="
-        line: '$mydestination = $myhostname.$mydomain, $myhostname.localdomain, localhost.localdomain, localhost, $myhostname'
+        line: 'mydestination = $myhostname.$mydomain, $myhostname.localdomain, localhost.localdomain, localhost, $myhostname'
       notify: restart_postfix
 
     - name: Config to listen only on localhost
@@ -676,7 +676,7 @@
       ansible.builtin.lineinfile:
         dest: /etc/postfix/main.cf
         regexp: "^smtpd_banner ="
-        line: 'smtpd_banner = $myhostname ESMTP'
+        line: 'smtpd_banner = $myhostname.$mydomain ESMTP'
       notify: restart_postfix
 
     - name: Setting certificate for TLS client connections
@@ -1372,14 +1372,6 @@
         mode: '0755'
       when: file_check.stat.exists == false
 
-    - name: Removing temporal files
-      ansible.builtin.file:
-          path: "{{ item }}"
-          state: absent
-      loop:
-         - /tmp/nextcloud.tar.gz
-         - /tmp/nextcloud
-
     - name: Create data directory for the nextcloud
       ansible.builtin.file:
         path: /var/www/nextcloud/data
@@ -1389,109 +1381,13 @@
         mode: '0755'
       when: file_check.stat.exists == false
 
-    - name: Check if Document Server Community archive are downloaded
-      delegate_to: localhost
-      ansible.builtin.stat:
-        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz
-      register: file_check
-
-    - name: Download Document Server Community archive
-      delegate_to: localhost
-      get_url:
-        url: "https://github.com/chadek/documentserver_community/releases/download/v0.2.1/documentserver_community.tar.gz"
-        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz"
-        owner: "sysadmin"
-        group: "sysadmin"
-        mode: '0755'
-      when: file_check.stat.exists == false
-
-    - name: Check if Document Server Community are installed
-      ansible.builtin.stat:
-        path: /var/www/nextcloud/apps/documentserver_community/README.md
-      register: file_check
-
-    - name: upload Document Server Community archive
-      ansible.builtin.copy:
-        src: documentserver_community-0.2.1.tar.gz
-        dest: /tmp/documentserver_community.tar.gz
-      when: file_check.stat.exists == false
-
-    - name: Extract Document Server Community archive
-      ansible.builtin.unarchive:
-        src: "/tmp/documentserver_community.tar.gz"
-        dest: "/tmp/"
-        remote_src: yes
-      when: file_check.stat.exists == false
-
-    - name: Copy Document Server Community folder to nextcloud apps
-      ansible.builtin.copy:
-        src: /tmp/documentserver_community/
-        dest: /var/www/nextcloud/apps/documentserver_community/
-        remote_src: true
-        owner: www-data
-        group: www-data
-        mode: '0755'
-      when: file_check.stat.exists == false
-
     - name: Removing temporal files
       ansible.builtin.file:
           path: "{{ item }}"
           state: absent
       loop:
-         - /tmp/documentserver_community.tar.gz
-         - /tmp/documentserver_community
-
-    - name: Check if OnlyOffice archive are downloaded
-      delegate_to: localhost
-      ansible.builtin.stat:
-        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz
-      register: file_check
-
-    - name: Download OnlyOffice archive
-      delegate_to: localhost
-      get_url:
-        url: "https://github.com/ONLYOFFICE/onlyoffice-nextcloud/releases/download/v9.12.0/onlyoffice.tar.gz"
-        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz"
-        owner: "sysadmin"
-        group: "sysadmin"
-        mode: '0755'
-      when: file_check.stat.exists == false
-
-    - name: Check if OnlyOffice are installed
-      ansible.builtin.stat:
-        path: /var/www/nextcloud/apps/onlyoffice/README.md
-      register: file_check
-
-    - name: upload OnlyOffice archive
-      ansible.builtin.copy:
-        src: onlyoffice-9.12.0.tar.gz
-        dest: /tmp/onlyoffice.tar.gz
-      when: file_check.stat.exists == false
-
-    - name: Extract OnlyOffice archive
-      ansible.builtin.unarchive:
-        src: "/tmp/onlyoffice.tar.gz"
-        dest: "/tmp/"
-        remote_src: yes
-      when: file_check.stat.exists == false
-
-    - name: Copy OnlyOffice folder to nextcloud apps
-      ansible.builtin.copy:
-        src: /tmp/onlyoffice/
-        dest: /var/www/nextcloud/apps/onlyoffice/
-        remote_src: true
-        owner: www-data
-        group: www-data
-        mode: '0755'
-      when: file_check.stat.exists == false
-
-    - name: Removing temporal files
-      ansible.builtin.file:
-          path: "{{ item }}"
-          state: absent
-      loop:
-         - /tmp/onlyoffice.tar.gz
-         - /tmp/onlyoffice
+         - /tmp/nextcloud.tar.gz
+         - /tmp/nextcloud
 
     - name: Create nextcloud database
       ansible.builtin.mysql_db:
@@ -1515,7 +1411,16 @@
           - php-intl
           - php-ldap
           - php-bcmath
+          - php-zip
           - php-imagick
+        state: latest
+
+    - name: Install nextcloud software dependencies
+      ansible.builtin.apt:
+        name:
+          - zip
+          - unzip
+          - imagemagick-7.q16
         state: latest
 
     - name: Enable CLI to PHP module APCU
@@ -1535,8 +1440,8 @@
         - apcu
         - intl
         - bcmath
-        - imagick
         - zip
+        - imagick
       notify: restart_php
 
     - name: Enable PHP module for apache
@@ -1549,8 +1454,8 @@
         - apcu
         - intl
         - bcmath
-        - imagick
         - zip
+        - imagick
       notify: restart_php
 
     - name: Enable PHP module for cli
@@ -1563,8 +1468,8 @@
         - apcu
         - intl
         - bcmath
-        - imagick
         - zip
+        - imagick
       notify: restart_php
 
     - name: Give execution permissions to OCC
@@ -1635,12 +1540,328 @@
       notify: restart_apache
       when: file_check.stat.exists == false
 
+    - name: Check if Calendar archive are downloaded
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/calendar-v5.5.15.tar.gz
+      register: file_check
+
+    - name: Download Calendar archive
+      delegate_to: localhost
+      get_url:
+        url: "https://github.com/nextcloud-releases/calendar/releases/download/v5.5.15/calendar-v5.5.15.tar.gz"
+        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/calendar-v5.5.15.tar.gz"
+        owner: "sysadmin"
+        group: "sysadmin"
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Check if Calendar are installed
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/apps/calendar/REUSE.toml
+      register: file_check
+
+    - name: upload Calendar archive
+      ansible.builtin.copy:
+        src: calendar-v5.5.15.tar.gz
+        dest: /tmp/calendar.tar.gz
+      when: file_check.stat.exists == false
+
+    - name: Extract Calendar archive
+      ansible.builtin.unarchive:
+        src: "/tmp/calendar.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
+
+    - name: Copy Calendar folder to nextcloud apps
+      ansible.builtin.copy:
+        src: /tmp/calendar/
+        dest: /var/www/nextcloud/apps/calendar/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Give execution permissions to OCC
+      ansible.builtin.file:
+        path: /var/www/nextcloud/occ
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Enable Calendar on nextcloud with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+          php /var/www/nextcloud/occ \
+          app:enable calendar
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Removing temporal files
+      ansible.builtin.file:
+          path: "{{ item }}"
+          state: absent
+      loop:
+         - /tmp/calendar.tar.gz
+         - /tmp/calendar
+
+    - name: Check if Contacts archive are downloaded
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/contacts-v7.3.16.tar.gz
+      register: file_check
+
+    - name: Download Contacts archive
+      delegate_to: localhost
+      get_url:
+        url: "https://github.com/nextcloud-releases/contacts/releases/download/v7.3.16/contacts-v7.3.16.tar.gz"
+        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/contacts-v7.3.16.tar.gz"
+        owner: "sysadmin"
+        group: "sysadmin"
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Check if Contacts are installed
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/apps/contacts/REUSE.toml
+      register: file_check
+
+    - name: upload Contacts archive
+      ansible.builtin.copy:
+        src: contacts-v7.3.16.tar.gz
+        dest: /tmp/contacts.tar.gz
+      when: file_check.stat.exists == false
+
+    - name: Extract Contacts archive
+      ansible.builtin.unarchive:
+        src: "/tmp/contacts.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
+
+    - name: Copy Contacts folder to nextcloud apps
+      ansible.builtin.copy:
+        src: /tmp/contacts/
+        dest: /var/www/nextcloud/apps/contacts/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Give execution permissions to OCC
+      ansible.builtin.file:
+        path: /var/www/nextcloud/occ
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Enable Contacts on nextcloud with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+          php /var/www/nextcloud/occ \
+          app:enable contacts
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Removing temporal files
+      ansible.builtin.file:
+          path: "{{ item }}"
+          state: absent
+      loop:
+         - /tmp/contacts.tar.gz
+         - /tmp/contacts
+
+    - name: Check if Mail archive are downloaded
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/mail-v5.7.1.tar.gz
+      register: file_check
+
+    - name: Download Mail archive
+      delegate_to: localhost
+      get_url:
+        url: "https://github.com/nextcloud-releases/mail/releases/download/v5.7.1/mail-v5.7.1.tar.gz"
+        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/mail-v5.7.1.tar.gz"
+        owner: "sysadmin"
+        group: "sysadmin"
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Check if Mail are installed
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/apps/mail/REUSE.toml
+      register: file_check
+
+    - name: upload Mail archive
+      ansible.builtin.copy:
+        src: mail-v5.7.1.tar.gz
+        dest: /tmp/mail.tar.gz
+      when: file_check.stat.exists == false
+
+    - name: Extract Mail archive
+      ansible.builtin.unarchive:
+        src: "/tmp/mail.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
+
+    - name: Copy Mail folder to nextcloud apps
+      ansible.builtin.copy:
+        src: /tmp/mail/
+        dest: /var/www/nextcloud/apps/mail/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Give execution permissions to OCC
+      ansible.builtin.file:
+        path: /var/www/nextcloud/occ
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Enable Mail on nextcloud with OCC
+      ansible.builtin.shell: |
+        sudo -u www-data \
+          php /var/www/nextcloud/occ \
+          app:enable mail
+      notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Removing temporal files
+      ansible.builtin.file:
+          path: "{{ item }}"
+          state: absent
+      loop:
+         - /tmp/mail.tar.gz
+         - /tmp/mail
+
+    - name: Check if Document Server Community archive are downloaded
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz
+      register: file_check
+
+    - name: Download Document Server Community archive
+      delegate_to: localhost
+      get_url:
+        url: "https://github.com/chadek/documentserver_community/releases/download/v0.2.1/documentserver_community.tar.gz"
+        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz"
+        owner: "sysadmin"
+        group: "sysadmin"
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Check if Document Server Community are installed
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/apps/documentserver_community/README.md
+      register: file_check
+
+    - name: upload Document Server Community archive
+      ansible.builtin.copy:
+        src: documentserver_community-0.2.1.tar.gz
+        dest: /tmp/documentserver_community.tar.gz
+      when: file_check.stat.exists == false
+
+    - name: Extract Document Server Community archive
+      ansible.builtin.unarchive:
+        src: "/tmp/documentserver_community.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
+
+    - name: Copy Document Server Community folder to nextcloud apps
+      ansible.builtin.copy:
+        src: /tmp/documentserver_community/
+        dest: /var/www/nextcloud/apps/documentserver_community/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Give execution permissions to OCC
+      ansible.builtin.file:
+        path: /var/www/nextcloud/occ
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
     - name: Enable Document Server Community on nextcloud with OCC
       ansible.builtin.shell: |
         sudo -u www-data \
           php /var/www/nextcloud/occ \
           app:enable documentserver_community
       notify: restart_apache
+      when: file_check.stat.exists == false
+
+    - name: Removing temporal files
+      ansible.builtin.file:
+          path: "{{ item }}"
+          state: absent
+      loop:
+         - /tmp/documentserver_community.tar.gz
+         - /tmp/documentserver_community
+
+    - name: Check if OnlyOffice archive are downloaded
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz
+      register: file_check
+
+    - name: Download OnlyOffice archive
+      delegate_to: localhost
+      get_url:
+        url: "https://github.com/ONLYOFFICE/onlyoffice-nextcloud/releases/download/v9.12.0/onlyoffice.tar.gz"
+        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz"
+        owner: "sysadmin"
+        group: "sysadmin"
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Check if OnlyOffice are installed
+      ansible.builtin.stat:
+        path: /var/www/nextcloud/apps/onlyoffice/README.md
+      register: file_check
+
+    - name: upload OnlyOffice archive
+      ansible.builtin.copy:
+        src: onlyoffice-9.12.0.tar.gz
+        dest: /tmp/onlyoffice.tar.gz
+      when: file_check.stat.exists == false
+
+    - name: Extract OnlyOffice archive
+      ansible.builtin.unarchive:
+        src: "/tmp/onlyoffice.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
+
+    - name: Copy OnlyOffice folder to nextcloud apps
+      ansible.builtin.copy:
+        src: /tmp/onlyoffice/
+        dest: /var/www/nextcloud/apps/onlyoffice/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Give execution permissions to OCC
+      ansible.builtin.file:
+        path: /var/www/nextcloud/occ
+        owner: www-data
+        group: www-data
+        mode: '0755'
       when: file_check.stat.exists == false
 
     - name: Enable OnlyOffice on nextcloud with OCC
@@ -1650,6 +1871,14 @@
           app:enable onlyoffice
       notify: restart_apache
       when: file_check.stat.exists == false
+
+    - name: Removing temporal files
+      ansible.builtin.file:
+          path: "{{ item }}"
+          state: absent
+      loop:
+         - /tmp/onlyoffice.tar.gz
+         - /tmp/onlyoffice
 
     - name: Remove execution permissions to OCC
       ansible.builtin.file:
@@ -1711,12 +1940,26 @@
          - mime.conf
       notify: restart_apache
 
-    - name: Install software dependencies
-      ansible.builtin.apt:
-        name:
-          - imagemagick-7.q16
-        state: latest
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
 
+    - name: restart_php
+      ansible.builtin.systemd_service:
+        name: php8.4-fpm
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: nextcloud rules exceptions for apache module security
+  tags: nextcloud
+  hosts:
+    - nextcloud
+  tasks:
     - name: Disable Rule Engine
       ansible.builtin.lineinfile:
         dest: /etc/modsecurity/modsecurity.conf
@@ -1732,12 +1975,8 @@
         enabled: true
         state: restarted
 
-    - name: restart_php
-      ansible.builtin.systemd_service:
-        name: php8.4-fpm
-        masked: no
-        enabled: true
-        state: restarted
+
+
 
 - name: debian server wordpress install
   tags: wordpress

@@ -4,6 +4,25 @@ wget \
   -O "nextcloud-32.0.2.tar.gz" \
   "https://download.nextcloud.com/server/releases/nextcloud-32.0.2.tar.gz"
 
+
+wget \
+  -c \
+  -t inf \
+  -O "calendar-v5.5.15.tar.gz" \
+  "https://github.com/nextcloud-releases/calendar/releases/download/v5.5.15/calendar-v5.5.15.tar.gz"
+
+wget \
+  -c \
+  -t inf \
+  -O "contacts-v7.3.16.tar.gz" \
+  "https://github.com/nextcloud-releases/contacts/releases/download/v7.3.16/contacts-v7.3.16.tar.gz"
+
+wget \
+  -c \
+  -t inf \
+  -O "mail-v5.7.1.tar.gz" \
+  "https://github.com/nextcloud-releases/mail/releases/download/v5.7.1/mail-v5.7.1.tar.gz"
+
 wget \
   -c \
   -t inf \

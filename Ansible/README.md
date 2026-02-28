@@ -34,7 +34,8 @@
       - php mariadb                   debian server lamp php install mariadb support
       - php common dependencies       debian server lamp php common dependencies
       [nextcloud]
-        - nextcloud                   debian server nextcloud install
+        - nextcloud install           debian server nextcloud install
+        - nextcloud apache security   nextcloud rules exceptions for apache module security
       [wordpress]
         - wordpress                   debian server wordpress install
       [zabbix]
