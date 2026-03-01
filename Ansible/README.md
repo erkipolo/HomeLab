@@ -9,6 +9,7 @@
   - language spanish                  debian language spanish support
   - upgrade unattended                debian upgrade unattended install
   - sudo user                         debian sudo user with public key
+  - secure ssh                        debian secure ssh service
   - hips install                      debian hips install
   - hips ssh                          debian hips ssh supervision
   - snmp                              debian snmp install
