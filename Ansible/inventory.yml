@@ -53,6 +53,7 @@ all:
             SNMP_CIDR_2: '192.168.56.1/32'
             SNMP_CIDR_3: '192.168.56.1/32'
           hosts:
+            ct00:
           children:
             web:
               vars:
@@ -60,7 +61,6 @@ all:
                 WEB_CIDR_2: '0.0.0.0/0'
                 WEB_CIDR_3: '0.0.0.0/0'
               hosts:
-                ct02:
             database:
               vars:
               hosts:
