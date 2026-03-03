@@ -833,6 +833,174 @@
         enabled: true
         state: restarted
 
+- name: debian server firewall install and add ssh access rules
+  tags: iptables
+  hosts:
+    - server
+  tasks:
+    - name: Install iptables
+      ansible.builtin.apt:
+        name: iptables-persistent
+        state: latest
+
+    - name: ACCEPT INPUT ESTABLISHED,RELATED
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+        comment: 'ESTABLISHED,RELATED'
+      notify: save_rules
+
+    - name: ACCEPT INPUT loopback
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        in_interface: lo
+        jump: ACCEPT
+        comment: 'loopback'
+      notify: save_rules
+
+    - name: ACCEPT INPUT PING IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: icmp
+        jump: ACCEPT
+        comment: 'ICMP'
+        ip_version: ipv4
+      notify: save_rules
+
+    - name: ACCEPT FORWARD ESTABLISHED,RELATED
+      ansible.builtin.iptables:
+        table: filter
+        chain: FORWARD
+        chain_management: true
+        state: present
+        action: append
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+        comment: 'ESTABLISHED,RELATED'
+      notify: save_rules
+
+    - name: ACCEPT FORWARD PING IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: FORWARD
+        chain_management: true
+        state: present
+        action: append
+        protocol: icmp
+        jump: ACCEPT
+        comment: 'ICMP'
+        ip_version: ipv4
+      notify: save_rules
+
+    - name: ACCEPT INPUT LIMIT SSH IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: tcp
+        destination_port: 22
+        source: '{{ item }}'
+        ctstate: NEW
+        syn: match
+        limit: 2/second
+        limit_burst: 20
+        jump: ACCEPT
+        comment: 'SSH'
+        ip_version: ipv4
+      loop:
+        - '{{ SSH_CIDR_1 }}'
+        - '{{ SSH_CIDR_2 }}'
+        - '{{ SSH_CIDR_3 }}'
+      notify: save_rules
+
+    - name: DEFAULT DROP INPUT POLICY
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        policy: DROP
+        comment: 'DROP INCOMING'
+        ip_version: both
+      notify: save_rules
+
+    - name: DEFAULT DROP FORWARD POLICY
+      ansible.builtin.iptables:
+        table: filter
+        chain: FORWARD
+        chain_management: true
+        state: present
+        action: append
+        policy: DROP
+        comment: 'DROP ROUTED'
+        ip_version: both
+      notify: save_rules
+
+    - name: DEFAULT ACCEPT OUTPUT POLICY
+      ansible.builtin.iptables:
+        table: filter
+        chain: OUTPUT
+        chain_management: true
+        state: present
+        action: append
+        policy: ACCEPT
+        comment: 'ACCEPT OUTGOING'
+        ip_version: both
+      notify: save_rules    
+
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
+
+- name: debian server firewall add snmp access rules
+  tags: iptables
+  hosts:
+    - server
+  tasks:
+    - name: ACCEPT INPUT SNMP IPv4
+      tags: IptablesSNMP
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: udp
+        destination_port: 161
+        source: '{{ item }}'
+        ctstate: NEW
+        jump: ACCEPT
+        comment: 'SNMP'
+        ip_version: ipv4
+      loop:
+        - '{{ SNMP_CIDR_1 }}'
+        - '{{ SNMP_CIDR_2 }}'
+        - '{{ SNMP_CIDR_3 }}'
+      notify: save_rules
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
+
 - name: debian server apache install
   tags: lamp, web
   hosts:
@@ -1102,6 +1270,38 @@
         masked: no
         enabled: true
         state: restarted
+
+- name: debian server firewall add http(s) access rules
+  tags: iptables
+  hosts:
+    - lamp
+    - web
+  tasks:
+    - name: ACCEPT INPUT HTTP(S) IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: tcp
+        destination_ports: 80,443
+        source: '{{ item }}'
+        ctstate: NEW
+        jump: ACCEPT
+        comment: 'HTTP(S)'
+        ip_version: ipv4
+      loop:
+        - '{{ WEB_CIDR_1 }}'
+        - '{{ WEB_CIDR_2 }}'
+        - '{{ WEB_CIDR_3 }}'
+      notify: save_rules
+
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
 
 - name: debian server mariadb install
   tags: lamp, database

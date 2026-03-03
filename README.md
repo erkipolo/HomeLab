@@ -51,5 +51,9 @@
   - ### Files require by some roles
     - ### Nextcloud
       - ### [nextcloud-32.0.2.zip](https://download.nextcloud.com/server/releases/nextcloud-32.0.2.zip)
+      - ### [calendar-v5.5.15.tar.gz](https://github.com/nextcloud-releases/calendar/releases/download/v5.5.15/calendar-v5.5.15.tar.gz)
+      - ### [contacts-v7.3.16.tar.gz](https://github.com/nextcloud-releases/contacts/releases/download/v7.3.16/contacts-v7.3.16.tar.gz)
+      - ### [mail-v5.7.1.tar.gz](https://github.com/nextcloud-releases/mail/releases/download/v5.7.1/mail-v5.7.1.tar.gz)
       - ### [documentserver_community-0.2.1.tar.gz](https://github.com/chadek/documentserver_community/releases/download/v0.2.1/documentserver_community.tar.gz)
       - ### [onlyoffice-9.12.0.tar.gz](https://github.com/ONLYOFFICE/onlyoffice-nextcloud/releases/download/v9.12.0/onlyoffice.tar.gz)
+      - ### [nextcloud-rule-exclusions-plugin-1.5.0.tar.gz](https://github.com/coreruleset/nextcloud-rule-exclusions-plugin/archive/refs/tags/v1.5.0.tar.gz)
