@@ -39,3 +39,4 @@ terraform.rc
 *.gz
 *.zip
 *.deb
+/Ansible/mitrans_vps

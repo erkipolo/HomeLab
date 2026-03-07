@@ -14,23 +14,6 @@ all:
     vm01: # VM with internet
       ansible_host: 192.168.56.21
   children:
-    selfhosted:
-      children:
-        debian:
-          vars:
-            debian_self_hosted_find:   '^192\.168\.56\.1 deb'
-            debian_self_hosted_hosts:  '192.168.56.1 deb.debian.org security.debian.org'
-          hosts:
-            ct00:
-            ct01:
-            ct02:
-          children:
-            proxmox:
-              vars:
-                proxmox_self_hosted_find:  '^192\.168\.56\.1 dow'
-                proxmox_self_hosted_hosts: '192.168.56.1 download.proxmox.com'
-              hosts:
-                pve:
     debian:
       vars:
         SUDO_USER_NAME: 'admin'
@@ -40,7 +23,21 @@ all:
         SNMP_COMMUNITY: 'homelab'
       hosts:
       children:
+        debselfhosted:
+          vars:
+            debian_self_hosted_find:   '^192\.168\.56\.1 deb'
+            debian_self_hosted_hosts:  '192.168.56.1 deb.debian.org security.debian.org'
+          hosts:
+            ct00:
+          children:
+            pveselfhosted:
+              vars:
+                proxmox_self_hosted_find:  '^192\.168\.56\.1 dow'
+                proxmox_self_hosted_hosts: '192.168.56.1 download.proxmox.com'
+              hosts:
+                pve:
         proxmox:
+          vars:
           hosts:
             pve:
         server:

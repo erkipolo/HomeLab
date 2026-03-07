@@ -5,7 +5,7 @@
 - name: selfhosted debian repositories configuration
   tags: repositories
   hosts:
-    - debian
+    - debselfhosted
   tasks:
     - name: Add debian repositories URL to hosts
       ansible.builtin.lineinfile:
@@ -25,7 +25,7 @@
 - name: selfhosted proxmox repositories configuration
   tags: repositories
   hosts:
-    - proxmox
+    - pveselfhosted
   tasks:
     - name: Add proxmox repositories URL to hosts
       ansible.builtin.lineinfile:
@@ -201,12 +201,24 @@
   hosts:
     - debian
   tasks:
-    - name: Create a new user
+    - name: Install sudo
+      ansible.builtin.apt:
+        name:
+          - sudo
+        state: latest
+
+    - name: Ensure group for new user exists
+      ansible.builtin.group:
+        name: "{{ SUDO_USER_NAME }}"
+        state: present
+
+    - name: Create a new user inside sudo group
       ansible.builtin.user:
         name: "{{ SUDO_USER_NAME }}"
         password: "{{ lookup('file', SUDO_USER_PASS) }}"
         state: present
         createhome: yes
+        groups: "{{ SUDO_USER_NAME }},users,sudo"
         shell: /bin/bash
 
     - name: Add new user public key 
@@ -214,19 +226,6 @@
         user: "{{ SUDO_USER_NAME }}"
         key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
         state: present
-
-    - name: Install sudo
-      ansible.builtin.apt:
-        name:
-          - sudo
-        state: latest
-
-    - name: Add new user to sudo group
-      ansible.builtin.blockinfile:
-        path: /etc/sudoers.d/{{ SUDO_USER_NAME }}
-        create: yes
-        block: |
-          {{ SUDO_USER_NAME}} ALL=(ALL:ALL) ALL
 
 - name: debian secure ssh service
   tags: securessh
@@ -240,8 +239,6 @@
         block: |
           Port 22
           AddressFamily inet
-          HostKey /etc/ssh/ssh_host_rsa_key
-          HostKey /etc/ssh/ssh_host_ed25519_key
           PermitRootLogin no
           MaxAuthTries 1
           MaxSessions 2
