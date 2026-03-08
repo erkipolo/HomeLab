@@ -88,6 +88,19 @@
         state: latest
         cache_valid_time: 0
 
+- name: debian admin tools install
+  tags: debian
+  hosts:
+    - debian
+  tasks:
+    - name: admin tools install
+      ansible.builtin.apt:
+        name:
+          - htop
+          - tmux
+          - vim-nox
+        state: latest
+
 - name: debian language spanish support
   tags: language
   hosts:
@@ -649,6 +662,13 @@
         dest: /etc/postfix/main.cf
         regexp: "^myhostname ="
         line: 'myhostname = {{ ansible_hostname }}'
+      notify: restart_postfix
+
+    - name: Config helo name
+      ansible.builtin.lineinfile:
+        dest: /etc/postfix/main.cf
+        regexp: "^smtp_helo_name ="
+        line: 'smtp_helo_name = $myhostname.$mydomain'
       notify: restart_postfix
 
     - name: Config destination domains

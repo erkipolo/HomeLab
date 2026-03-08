@@ -1,10 +1,10 @@
 # HomeLab
 ## Level structure
 - ### debian
+  - ### proxmox
   - ### server
     - ### lamp
       - ### nextcloud
-  - ### proxmox
 
 ## Inventory
 - ### Nextwork:`192.168.56.0/24`
