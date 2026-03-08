@@ -15,6 +15,11 @@
 - ### vm00:`192.168.56.20`
 - ### vm01:`192.168.56.21`
 
+## Self Hosted
+- ### laptop: `deb.debian.org`
+- ### laptop: `security.debian.org`
+- ### laptop: `download.proxmox.com`
+
 ## Domain Name
 - ### homelab.cu
 
