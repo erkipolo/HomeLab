@@ -16,9 +16,9 @@
 - ### vm01:`192.168.56.21`
 
 ## Self Hosted
-- ### laptop: `debian.homelab.cu` (repositories debian main)
-- ### laptop: `security.homelab.cu`  (repositories debian security)
-- ### laptop: `proxmox.homelab.cu` (repositories proxmox)
+- ### laptop: `debian.homelab.cu` (debian main repositories)
+- ### laptop: `security.homelab.cu` (debian security repositories)
+- ### laptop: `proxmox.homelab.cu` (proxmox no-subscription repositories)
 
 ## Domain Name
 - ### homelab.cu
