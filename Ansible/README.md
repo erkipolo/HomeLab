@@ -5,19 +5,20 @@
       - ### [pveselfhosted]
         - ### self hosted proxmox repositories configuration
     - ### debian repositories configuration
+    - ### [proxmox]
+      - ### proxmox repositories configuration
     - ### debian upgrade distribution
     - ### debian admin tools install
     - ### debian language spanish support
     - ### debian upgrade unattended install
     - ### debian sudo user with public key
+    - ### [proxmox]
+      - ### proxmox add pam pve user
     - ### debian secure ssh service
     - ### debian hips install
     - ### debian hips ssh supervision
     - ### debian snmpd install
     - ### debian monitoring install
-    - ### [proxmox]
-      - ### proxmox repositories configuration
-      - ### proxmox add pam pve user
     - ### [server]
       - ### debian server kernel security configuration
       - ### debian server e-mail notification install
