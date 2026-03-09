@@ -138,6 +138,7 @@
           - tmux
           - vim-nox
         state: latest
+        update_cache: yes
 
 - name: debian language spanish support
   tags: language
@@ -149,6 +150,7 @@
         name:
           - task-spanish
         state: latest
+        update_cache: yes
 
     - name: Ensure localisation files are available
       ansible.builtin.locale_gen:
@@ -182,6 +184,7 @@
         name:
           - unattended-upgrades
         state: latest
+        update_cache: yes
 
     - name: Setting what and when to unattended upgrades
       ansible.builtin.copy:
@@ -257,6 +260,7 @@
         name:
           - sudo
         state: latest
+        update_cache: yes
 
     - name: Ensure group for new user exists
       ansible.builtin.group:
@@ -335,6 +339,7 @@
         name:
           - fail2ban
         state: latest
+        update_cache: yes
 
     - name: Check if a local config exist
       ansible.builtin.stat:
@@ -426,6 +431,7 @@
         name:
           - snmpd
         state: latest
+        update_cache: yes
 
     - name: Enable SNMPD Interfaces Access
       ansible.builtin.copy:
@@ -461,6 +467,7 @@
         name:
           - monit
         state: latest
+        update_cache: yes
 
     - name: Check resources each 1 min
       ansible.builtin.lineinfile:
@@ -621,6 +628,7 @@
           - postfix
           - bsd-mailx
         state: latest
+        update_cache: yes
 
     - name: Config aliases
       ansible.builtin.copy:
@@ -859,6 +867,7 @@
       ansible.builtin.apt:
         name: iptables-persistent
         state: latest
+        update_cache: yes
 
     - name: ACCEPT INPUT ESTABLISHED,RELATED
       ansible.builtin.iptables:
@@ -1029,6 +1038,7 @@
         name:
           - apache2
         state: latest
+        update_cache: yes
 
     - name: Config apache log rotation
       ansible.builtin.copy:
@@ -1110,6 +1120,7 @@
         name:
           - libapache2-mod-security2
         state: latest
+        update_cache: yes
 
     - name: Enable apache security module
       ansible.builtin.file:
@@ -1191,6 +1202,7 @@
         name:
           - modsecurity-crs
         state: latest
+        update_cache: yes
       notify: restart_apache
 
   handlers:
@@ -1212,6 +1224,7 @@
         name:
           - libapache2-mod-evasive
         state: latest
+        update_cache: yes
 
     - name: Enable evasive module
       ansible.builtin.file:
@@ -1331,12 +1344,14 @@
         name:
           - mariadb-server
         state: latest
+        update_cache: yes
 
     - name: Install Ansible MariaDB support
       ansible.builtin.apt:
         name:
           - python3-mysqldb
         state: latest
+        update_cache: yes
 
 - name: debian server php install
   tags: lamp
@@ -1349,6 +1364,7 @@
           - php
           - php-fpm
         state: latest
+        update_cache: yes
 
     - name: Enable PHP-FPM modules for Apache
       ansible.builtin.file:
@@ -1392,6 +1408,7 @@
         name:
           - libapache2-mod-php
         state: latest
+        update_cache: yes
 
   handlers:
     - name: restart_apache
@@ -1411,6 +1428,7 @@
         name:
           - php-mysql
         state: latest
+        update_cache: yes
 
   handlers:
     - name: restart_apache
@@ -1435,6 +1453,7 @@
           - php-common
           - php-mbstring
         state: latest
+        update_cache: yes
 
     - name: Setting PHP timezone
       ansible.builtin.lineinfile:
@@ -1667,6 +1686,7 @@
           - php-zip
           - php-imagick
         state: latest
+        update_cache: yes
 
     - name: Install nextcloud software dependencies
       ansible.builtin.apt:
@@ -1675,6 +1695,7 @@
           - unzip
           - imagemagick-7.q16
         state: latest
+        update_cache: yes
 
     - name: Enable CLI to PHP module APCU
       ansible.builtin.lineinfile:
@@ -2242,6 +2263,7 @@
           - wordpress
           - wordpress-l10n
         state: latest
+        update_cache: yes
 
     - name: Create wordpress database
       ansible.builtin.mysql_db:
@@ -2332,15 +2354,6 @@
         deb: https://repo.zabbix.com/zabbix/7.0/debian/pool/main/z/zabbix-release/zabbix-release_latest+debian13_all.deb
         state: present
 
-    - name: Update and Upgrade System
-      ansible.builtin.apt:
-        update_cache: yes
-        upgrade: dist
-        autoremove: yes
-        autoclean: yes
-        state: latest
-        cache_valid_time: 0
-
     - name: Install zabbix
       ansible.builtin.apt:
         name:
@@ -2350,6 +2363,7 @@
           - zabbix-server-mysql
           - zabbix-frontend-php
         state: latest
+        update_cache: yes
 
     - name: Create zabbix database
       ansible.builtin.mysql_db:
