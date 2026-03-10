@@ -1027,10 +1027,10 @@
         iptables-save > /etc/iptables/rules.v4
         ip6tables-save > /etc/iptables/rules.v6
 
-- name: debian server dns edge
-  tags: dns_edge
+- name: debian server dns install
+  tags: dns
   hosts:
-    - dns_edge
+    - dns
   tasks:
     - name: Install bind9
       ansible.builtin.apt:
@@ -1040,6 +1040,43 @@
         state: latest
         update_cache: yes
 
+- name: debian server firewall add dns access rules
+  tags: iptables
+  hosts:
+    - dns
+  tasks:
+    - name: ACCEPT INPUT DNS IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: udp
+        destination_port: 53
+        source: '{{ item }}'
+        ctstate: NEW
+        jump: ACCEPT
+        comment: 'DNS'
+        ip_version: ipv4
+      loop:
+        - '{{ DNS_CIDR_1 }}'
+        - '{{ DNS_CIDR_2 }}'
+        - '{{ DNS_CIDR_3 }}'
+      notify: save_rules
+
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
+
+- name: debian server dns edge configuration
+  tags: dns
+  hosts:
+    - dns
+    - edge
+  tasks:
     - name: Setting external options
       ansible.builtin.copy:
         dest: /etc/bind/named.conf.options
@@ -1105,37 +1142,6 @@
         masked: no
         enabled: true
         state: restarted
-
-- name: debian server firewall add dns access rules
-  tags: iptables
-  hosts:
-    - dns
-  tasks:
-    - name: ACCEPT INPUT DNS IPv4
-      ansible.builtin.iptables:
-        table: filter
-        chain: INPUT
-        chain_management: true
-        state: present
-        action: append
-        protocol: udp
-        destination_port: 53
-        source: '{{ item }}'
-        ctstate: NEW
-        jump: ACCEPT
-        comment: 'DNS'
-        ip_version: ipv4
-      loop:
-        - '{{ DNS_CIDR_1 }}'
-        - '{{ DNS_CIDR_2 }}'
-        - '{{ DNS_CIDR_3 }}'
-      notify: save_rules
-
-  handlers:
-    - name: save_rules
-      ansible.builtin.shell: |
-        iptables-save > /etc/iptables/rules.v4
-        ip6tables-save > /etc/iptables/rules.v6
 
 - name: debian server apache install
   tags: lamp, web

@@ -27,6 +27,12 @@
       - ### debian server monitoring notification via e-mail
       - ### debian server firewall install and add ssh access rules
       - ### debian server firewall add snmpd access rules
+      - ### [dns]
+        - ### debian server dns install
+        - ### debian server firewall add dns access rules
+        - ### [edge]
+          - ### debian server dns edge configuration
+
       - ### [lamp: web]
         - ### debian server apache install
         - ### debian server apache security module
