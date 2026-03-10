@@ -1027,6 +1027,87 @@
         iptables-save > /etc/iptables/rules.v4
         ip6tables-save > /etc/iptables/rules.v6
 
+- name: debian server dns edge
+  tags: dns_edge
+  hosts:
+    - dns_edge
+  tasks:
+    - name: Install bind9
+      ansible.builtin.apt:
+        name:
+          - bind9
+          - bind9utils
+        state: latest
+        update_cache: yes
+
+    - name: Setting external options
+      ansible.builtin.copy:
+        dest: /etc/bind/named.conf.options
+        owner: root
+        group: bind
+        mode: '0644'
+        content: |
+          options {
+            directory "/var/cache/bind";
+            allow-query { any; };
+            allow-transfer { localhost; };
+            recursion no;
+            dnssec-validation auto;
+            listen-on port 53 { any; };
+            listen-on-v6 { any; };
+          };
+      notify: restart_bind9
+
+    - name: add external zones file
+      ansible.builtin.copy:
+        dest: /etc/bind/named.conf
+        owner: root
+        group: bind
+        mode: '0644'
+        content: |
+          include "/etc/bind/named.conf.options";
+          include "/etc/bind/named.conf.local";
+          include "/etc/bind/named.conf.root-hints";
+          include "/etc/bind/named.conf.external-zones";
+      notify: restart_bind9
+
+    - name: copy external zones configuration
+      ansible.builtin.copy:
+        src: '{{ named_conf_external_zone }}'
+        dest: /etc/bind/named.conf.external-zones
+        owner: root
+        group: bind
+        mode: '0644'
+      notify: restart_bind9
+
+    - name: copy external direct zone configuration
+      ansible.builtin.copy:
+        src: '{{ named_conf_external_zone_dir }}'
+        dest: /var/cache/bind/zone.dir
+        owner: root
+        group: bind
+        mode: '0644'
+      notify: restart_bind9
+
+    - name: copy external invert zone configuration
+      ansible.builtin.copy:
+        src: '{{ named_conf_external_zone_inv }}'
+        dest: /var/cache/bind/zone.inv
+        owner: root
+        group: bind
+        mode: '0644'
+      notify: restart_bind9
+
+  handlers:
+    - name: restart_bind9
+      ansible.builtin.systemd_service:
+        name: bind9
+        masked: no
+        enabled: true
+        state: restarted
+
+
+
 - name: debian server apache install
   tags: lamp, web
   hosts:

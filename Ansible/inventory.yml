@@ -58,6 +58,13 @@ all:
           hosts:
             ct00:
           children:
+            dns_edge:
+              vars:
+                named_conf_external_zone:     'named.conf.external-zone'
+                named_conf_external_zone_dir: 'named.conf.external-zone.dir'
+                named_conf_external_zone_inv: 'named.conf.external-zone.inv'
+              hosts:
+                ct00:
             web:
               vars:
                 WEB_CIDR_1: '0.0.0.0/0'

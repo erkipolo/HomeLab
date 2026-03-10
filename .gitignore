@@ -40,3 +40,6 @@ terraform.rc
 *.zip
 *.deb
 /Ansible/mitrans_vps
+Ansible/files/mitrans_vps.external-zone
+Ansible/files/mitrans_vps.external-zone.dir
+Ansible/files/mitrans_vps.external-zone.inv
