@@ -1068,13 +1068,13 @@
           include "/etc/bind/named.conf.options";
           include "/etc/bind/named.conf.local";
           include "/etc/bind/named.conf.root-hints";
-          include "/etc/bind/named.conf.external-zones";
+          include "/etc/bind/{{ named_conf_external_zone }}";
       notify: restart_bind9
 
     - name: copy external zones configuration
       ansible.builtin.copy:
         src: '{{ named_conf_external_zone }}'
-        dest: /etc/bind/named.conf.external-zones
+        dest: /etc/bind/{{ named_conf_external_zone }}
         owner: root
         group: bind
         mode: '0644'
