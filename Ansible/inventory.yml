@@ -62,6 +62,9 @@ all:
                 named_conf_external_zone:     'named.conf.external-zone'
                 named_conf_external_zone_dir: 'named.conf.external-zone.dir'
                 named_conf_external_zone_inv: 'named.conf.external-zone.inv'
+                DNS_CIDR_1: '0.0.0.0/0'
+                DNS_CIDR_2: '0.0.0.0/0'
+                DNS_CIDR_3: '0.0.0.0/0'
               hosts:
                 ct00:
             web:

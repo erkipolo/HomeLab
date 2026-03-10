@@ -1106,7 +1106,36 @@
         enabled: true
         state: restarted
 
+- name: debian server firewall add dns access rules
+  tags: iptables
+  hosts:
+    - dns
+  tasks:
+    - name: ACCEPT INPUT DNS IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: udp
+        destination_port: 53
+        source: '{{ item }}'
+        ctstate: NEW
+        jump: ACCEPT
+        comment: 'DNS'
+        ip_version: ipv4
+      loop:
+        - '{{ DNS_CIDR_1 }}'
+        - '{{ DNS_CIDR_2 }}'
+        - '{{ DNS_CIDR_3 }}'
+      notify: save_rules
 
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
 
 - name: debian server apache install
   tags: lamp, web
