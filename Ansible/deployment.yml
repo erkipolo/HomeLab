@@ -330,7 +330,7 @@
         state: restarted
 
 - name: debian hips install
-  tags: hips
+  tags: hips-install
   hosts:
     - debian
   tasks:
@@ -370,6 +370,15 @@
         line: 'maxretry = 3'
       notify: restart_fail2ban
 
+    - name: Block for a week for reencident
+      ansible.builtin.lineinfile:
+        path: /etc/fail2ban/jail.local
+        firstmatch: true
+        insertafter: '^\[recidive\]'
+        line: 'enabled = true'
+        state: present
+      notify: restart_fail2ban
+
     - name: Setting fail2ban log rotation
       ansible.builtin.copy:
         dest: /etc/logrotate.d/fail2ban
@@ -401,13 +410,14 @@
         state: restarted
 
 - name: debian hips ssh supervision
-  tags: hips
+  tags: hips-ssh
   hosts:
     - debian
   tasks:
     - name: Enable SSH supervision
       ansible.builtin.lineinfile:
         path: /etc/fail2ban/jail.local
+        firstmatch: true
         insertafter: '^\[sshd\]'
         line: 'enabled = true'
         state: present
@@ -1064,14 +1074,14 @@
         mode: '0644'
         content: |
           logging {
-            channel log {
-              file "/var/log/named/security.log";
-              severity debug 3;
+            channel security_file {
+              file "/var/log/named/security.log" versions 3 size 30m;
+              severity dynamic;
               print-time yes;
-              print-category yes;
-              print-severity yes;
             };
-            category default { log; };
+            category security {
+              security_file;
+            };
           };
       notify: restart_bind9
 
@@ -1207,6 +1217,28 @@
     - name: restart_bind9
       ansible.builtin.systemd_service:
         name: bind9
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian hips dns supervision
+  tags: hips-dns
+  hosts:
+    - dns
+  tasks:
+    - name: Enable DNS supervision
+      ansible.builtin.lineinfile:
+        path: /etc/fail2ban/jail.local
+        firstmatch: true
+        insertafter: '^\[named\-refused\]'
+        line: 'enabled = true'
+        state: present
+      notify: restart_fail2ban
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
         masked: no
         enabled: true
         state: restarted
