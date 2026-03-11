@@ -370,15 +370,6 @@
         line: 'maxretry = 3'
       notify: restart_fail2ban
 
-    - name: Block for a week for reencident
-      ansible.builtin.lineinfile:
-        path: /etc/fail2ban/jail.local
-        firstmatch: true
-        insertafter: '^\[recidive\]'
-        line: 'enabled = true'
-        state: present
-      notify: restart_fail2ban
-
     - name: Setting fail2ban log rotation
       ansible.builtin.copy:
         dest: /etc/logrotate.d/fail2ban
@@ -400,6 +391,29 @@
               fail2ban-client flushlogs 1>/dev/null
             endscript
           }
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
+
+- name: debian hips reencident
+  tags: hips-reencident
+  hosts:
+    - debian
+  tasks:
+    - name: Block for a week for reencident
+      ansible.builtin.lineinfile:
+        path: /etc/fail2ban/jail.local
+        firstmatch: true
+        insertafter: '^\[recidive\]'
+        line: 'enabled = true'
+        state: present
+      notify: restart_fail2ban
 
   handlers:
     - name: restart_fail2ban
