@@ -1234,7 +1234,7 @@
         masked: no
         enabled: true
         state: restarted
-
+### bugs
 - name: debian hips dns supervision
   tags: hips-dns
   hosts:
@@ -1244,7 +1244,7 @@
       ansible.builtin.lineinfile:
         path: /etc/fail2ban/jail.local
         firstmatch: true
-        insertafter: '^\[named\-refused\]'
+        insertafter: '^\[named-refused\]'
         line: 'enabled = true'
         state: present
       notify: restart_fail2ban
