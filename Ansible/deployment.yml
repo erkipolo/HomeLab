@@ -1156,6 +1156,15 @@
             dnssec-validation auto;
             listen-on port 53 { any; };
             listen-on-v6 { any; };
+            version "";
+            rate-limit {
+              ipv4-prefix-length 32;
+              window 10;
+              responses-per-second 25;
+              errors-per-second 5;
+              nxdomains-per-second 5;
+              slip 2;
+            };
           };
       notify: restart_bind9
 
