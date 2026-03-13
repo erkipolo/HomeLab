@@ -137,6 +137,7 @@
           - htop
           - tmux
           - vim-nox
+          - bash-completion
         state: latest
         update_cache: yes
 
