@@ -408,12 +408,12 @@
     - debian
   tasks:
     - name: Block for a week for reencident
-      ansible.builtin.lineinfile:
+      ansible.builtin.replace:
         path: /etc/fail2ban/jail.local
-        firstmatch: true
-        insertafter: '^\[recidive\]'
-        line: 'enabled = true'
-        state: present
+        regexp: '^(\[recidive\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
       notify: restart_fail2ban
 
   handlers:
@@ -430,12 +430,12 @@
     - debian
   tasks:
     - name: Enable SSH supervision
-      ansible.builtin.lineinfile:
+      ansible.builtin.replace:
         path: /etc/fail2ban/jail.local
-        firstmatch: true
-        insertafter: '^\[sshd\]'
-        line: 'enabled = true'
-        state: present
+        regexp: '^(\[sshd\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
       notify: restart_fail2ban
 
   handlers:
