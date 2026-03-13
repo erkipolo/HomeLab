@@ -1242,12 +1242,12 @@
     - dns
   tasks:
     - name: Enable DNS supervision
-      ansible.builtin.lineinfile:
+      ansible.builtin.replace:
         path: /etc/fail2ban/jail.local
-        firstmatch: true
-        insertafter: '^\[named-refused\]'
-        line: 'enabled = true'
-        state: present
+        regexp: '^(\[named-refused\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
       notify: restart_fail2ban
 
   handlers:
