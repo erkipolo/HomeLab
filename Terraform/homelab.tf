@@ -4,12 +4,12 @@ resource "proxmox_lxc" "ct00" {
   memory          = 512
   nameserver      = "127.0.0.1"
   onboot          = true
-  ostemplate      = "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
+  ostemplate      = "local-dir:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
   ssh_public_keys = var.ct_ssh_public_key
   searchdomain    = "homelab.cu"
   start           = true
   swap            = 512
-  target_node     = "pve"
+  target_node     = "GDMB"
   unprivileged    = true
   vmid            = 700
   features {
@@ -18,12 +18,12 @@ resource "proxmox_lxc" "ct00" {
   network {
     bridge   = "vmbr0"
     firewall = true
-    ip       = "192.168.56.10/24"
+    ip       = "172.32.40.50/26"
     name     = "eth0"
   }
   rootfs {
     size    = "32G"
-    storage = "local-lvm"
+    storage = "local-dir"
   }
 }
 
@@ -33,7 +33,7 @@ resource "proxmox_lxc" "ct01" {
   memory          = 512
   nameserver      = "127.0.0.1"
   onboot          = true
-  ostemplate      = "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
+  ostemplate      = "local-dir:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
   ssh_public_keys = var.ct_ssh_public_key
   searchdomain    = "homelab.cu"
   start           = true
@@ -58,7 +58,7 @@ resource "proxmox_lxc" "ct01" {
   }
   rootfs {
     size    = "32G"
-    storage = "local-lvm"
+    storage = "local-dir"
   }
 }
 
@@ -68,7 +68,7 @@ resource "proxmox_lxc" "ct02" {
   memory          = 2048
   nameserver      = "127.0.0.1"
   onboot          = true
-  ostemplate      = "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
+  ostemplate      = "local-dir:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
   ssh_public_keys = var.ct_ssh_public_key
   searchdomain    = "homelab.cu"
   start           = true
@@ -87,6 +87,6 @@ resource "proxmox_lxc" "ct02" {
   }
   rootfs {
     size    = "32G"
-    storage = "local-lvm"
+    storage = "local-dir"
   }
 }
