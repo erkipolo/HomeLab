@@ -1,7 +1,12 @@
 ---
 # This config is designed to work on
-# Debian 13.3 trixie and may work with
+# Debian 13.4 trixie and may work with
 # other similar distros
+
+####################################################
+#            REPOSITORIES CONFIGURATIONS           #
+####################################################
+
 - name: selfhosted debian repositories configuration
   tags: repositories
   hosts:
@@ -112,6 +117,10 @@
         signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
         state: present
 
+####################################################
+#                UPGRADE DISTRIBUTION              #
+####################################################
+
 - name: debian upgrade distribution
   tags: upgrade
   hosts:
@@ -126,6 +135,10 @@
         state: latest
         cache_valid_time: 0
 
+####################################################
+#             INSTALL ADMINISTRATOR TOOLS          #
+####################################################
+
 - name: debian admin tools install
   tags: debian
   hosts:
@@ -134,12 +147,15 @@
     - name: admin tools install
       ansible.builtin.apt:
         name:
-          - htop
           - tmux
           - vim-nox
           - bash-completion
         state: latest
         update_cache: yes
+
+####################################################
+#                   SPANISH SUPPORT                #
+####################################################
 
 - name: debian language spanish support
   tags: language
@@ -174,6 +190,10 @@
     - name: Set timezone
       ansible.builtin.timezone:
         name: "America/Havana"
+
+####################################################
+#      ENABLE UPDATES UNATTENDED for SECURITY      #
+####################################################
 
 - name: debian upgrade unattended install
   tags: upgrade-unattended
@@ -251,6 +271,10 @@
         enabled: true
         state: restarted
 
+####################################################
+#        CREATE A NON ROOT USER for SECURITY       #
+####################################################
+
 - name: debian sudo user with public key
   tags: user
   hosts:
@@ -297,6 +321,10 @@
           group:{{ SUDO_USER_NAME}}:{{ SUDO_USER_NAME}}@pam::
           acl:1:/:@{{ SUDO_USER_NAME}}:Administrator:
 
+#####################################################
+# ONLY USE PUBLIC KEYS ON SSH SERVICES for SECURITY #
+#####################################################
+
 - name: debian secure ssh service
   tags: securessh
   hosts:
@@ -329,6 +357,10 @@
         masked: no
         enabled: true
         state: restarted
+
+####################################################
+# HOST INSTRUCTION PREVENTION SYSTEM for SECURITY  #
+####################################################
 
 - name: debian hips install
   tags: hips-install
@@ -371,6 +403,15 @@
         line: 'maxretry = 3'
       notify: restart_fail2ban
 
+    - name: Block for a week for reencident
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[recidive\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
     - name: Setting fail2ban log rotation
       ansible.builtin.copy:
         dest: /etc/logrotate.d/fail2ban
@@ -401,28 +442,9 @@
         enabled: true
         state: restarted
 
-
-- name: debian hips reencident
-  tags: hips-reencident
-  hosts:
-    - debian
-  tasks:
-    - name: Block for a week for reencident
-      ansible.builtin.replace:
-        path: /etc/fail2ban/jail.local
-        regexp: '^(\[recidive\])(?!\n{{data}})'
-        replace: '\1\n{{data}}'
-      vars:
-        data: 'enabled = true'
-      notify: restart_fail2ban
-
-  handlers:
-    - name: restart_fail2ban
-      ansible.builtin.systemd_service:
-        name: fail2ban
-        masked: no
-        enabled: true
-        state: restarted
+####################################################
+#        HIPS SSH SUPERVISION for SECURITY         #
+####################################################
 
 - name: debian hips ssh supervision
   tags: hips-ssh
@@ -445,6 +467,10 @@
         masked: no
         enabled: true
         state: restarted
+
+#####################################################
+# SIMPLE NETWORK MANAGEMENT PROTOCOL for MONITORING #
+#####################################################
 
 - name: debian snmpd install
   tags: snmpd
@@ -481,6 +507,10 @@
         masked: no
         enabled: true
         state: restarted
+
+####################################################
+#      RESOURCES and PROCESSES for MONITORING      #
+####################################################
 
 - name: debian monitoring install
   tags: monit
@@ -554,6 +584,10 @@
         masked: no
         enabled: true
         state: restarted
+
+####################################################
+#        KERNEL CONFIGURATION for SECURITY         #
+####################################################
 
 - name: debian server kernel security configuration
   tags: kernel
@@ -640,6 +674,10 @@
         state: present
         reload: yes
         sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+##########################################################
+# ENABLE E-MAIL NOTIFICATION for SECURITY and MONITORING #
+##########################################################
 
 - name: debian server e-mail notification install
   tags: notification
@@ -790,6 +828,11 @@
         enabled: true
         state: restarted
 
+####################################################
+#  E-MAIL NOTIFICATION of UNATTENDED UPDATES for   #
+#  MONITORING                                      #
+####################################################
+
 - name: debian server upgrade unattended notification via e-mail
   tags: notification
   hosts:
@@ -814,6 +857,10 @@
         masked: no
         enabled: true
         state: restarted
+
+####################################################
+#     E-MAIL NOTIFICATION of HIPS for SECURITY     #
+####################################################
 
 - name: debian server hips notification via e-mail
   tags: notification
