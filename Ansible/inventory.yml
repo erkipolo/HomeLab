@@ -32,8 +32,8 @@ all:
             pve:
         debselfhosted:
           vars:
-            debian_self_hosted_find:      '^192\.168\.56\.1 deb'
-            debian_self_hosted_hosts:     '192.168.56.1 debian.homelab.cu security.homelab.cu'
+            debian_self_hosted_find:      '^172\.32\.40\.50 deb'
+            debian_self_hosted_hosts:     '172.32.40.50 debian.homelab.cu security.homelab.cu'
             debian_repositories_main:     'debian.homelab.cu'
             debian_repositories_security: 'security.homelab.cu'
           hosts:
