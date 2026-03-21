@@ -64,7 +64,7 @@ all:
                 DNS_CIDR_3: '0.0.0.0/0'
               hosts:
               children:
-                edge:
+                dnsedge:
                   vars:
                     named_conf_external_zone:     'named.conf.external-zone'
                     named_conf_external_zone_dir: 'named.conf.external-zone.dir'
@@ -82,7 +82,11 @@ all:
               hosts:
             lamp:
               vars:
+                WEB_CIDR_1: '0.0.0.0/0'
+                WEB_CIDR_2: '0.0.0.0/0'
+                WEB_CIDR_3: '0.0.0.0/0'
               hosts:
+                ct00:
               children:
                 nextcloud:
                   vars:

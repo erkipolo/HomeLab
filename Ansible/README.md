@@ -1,53 +1,38 @@
-- ### [all]
-  - ### [debian]
-    - ### [debselfhosted]
-      - ### self hosted debian repositories configuration
-      - ### [pveselfhosted]
-        - ### self hosted proxmox repositories configuration
-    - ### debian repositories configuration
-    - ### [proxmox]
-      - ### proxmox repositories configuration
-    - ### debian upgrade distribution
-    - ### debian admin tools install
-    - ### debian language spanish support
-    - ### debian upgrade unattended install
-    - ### debian sudo user with public key
-    - ### [proxmox]
-      - ### proxmox add pam pve user
-    - ### debian secure ssh service
-    - ### debian hips install
-    - ### debian hips ssh supervision
-    - ### debian snmpd install
-    - ### debian monitoring install
-    - ### [server]
-      - ### debian server kernel security configuration
-      - ### debian server e-mail notification install
-      - ### debian server upgrade unattended notification via e-mail
-      - ### debian server hips notification via e-mail
-      - ### debian server monitoring notification via e-mail
-      - ### debian server firewall install and add ssh access rules
-      - ### debian server firewall add snmpd access rules
-      - ### [dns]
-        - ### debian server dns install
-        - ### debian server firewall add dns access rules
-        - ### [edge]
-          - ### debian server dns edge configuration
-      - ### [lamp: web]
-        - ### debian server apache install
-        - ### debian server apache security module
-        - ### debian server apache evasive module
-        - ### debian server firewall add http(s) access rules
-      - ### [lamp: database]
-        - ### debian server mariadb install
-      - ### [lamp]
-        - ### debian server lamp php install
-        - ### debian server lamp php install apache support
-        - ### debian server lamp php install mariadb support
-        - ### debian server lamp php common dependencies
-        - ### [nextcloud]
-          - ### debian server nextcloud install
-          - ### nextcloud rules exceptions for apache module security
-        - ### [wordpress]
-          - ### debian server wordpress install
-        - ### [zabbix]
-          - ### debian server zabbix install
+[basic]
+  kernel                                  # kernel security configuration
+  repositories                            # repositories configuration
+  upgrade                                 # upgrade distribution
+  sudo-user                               # create a non root user
+  spanish-support                         # setting language spanish
+  admin-tools                             # sysadmin tools (tmux, vim, bash-completion)
+[services]
+  email-notification-enable               # enable service for e-mail notification via postfix
+  upgrade-unattended-enable               # enable service for unattended upgrades
+  monit-enable                            # enable service for monitoring resources via monit
+  snmp-enable                             # enable service for monitoring resources via snmp
+  dns-enable                              # enable service for dns via bind9
+  web-enable                              # enable service for web via apache2
+  database-enable                         # enable service for database via mariadb
+  lamp-stack                              # stack (L)inux (A)pache (M)ariadb (P)hp
+[secure]
+  ssh-secure                              # secure service ssh
+  web-secure                              # secure service web
+[configurations]
+  dns-edge                                # configuration dns external
+[firewall]
+  iptables-enable                         # Installing firewall via iptables
+  iptables-ssh                            # add firewall rules for service ssh
+  iptables-snmp                           # add firewall rules for service snmp
+  iptables-dns                            # add firewall rules for service dns
+  iptables-web                            # add firewall rules for service web
+  iptables-policy                         # Setting default firewall policy
+[hips]
+  hips-enable                             # Installing host instruction prevention system via fail2ban
+  hips-ssh                                # add hips supervition for service ssh
+  hips-dns                                # add hips supervition for service dns
+  hips-web                                # add hips supervition for service web
+[notification]
+  upgrade-unattended-notification         # notification by unattended upgrades with errors
+  monit-notification                      # notification by reach resources over threshold
+  hips-notification                       # notification by violation and action taken
+

@@ -3,6 +3,8 @@
 - ### debian
   - ### proxmox
   - ### server
+    - ### dns
+      - ### edge
     - ### lamp
       - ### nextcloud
 
@@ -52,6 +54,7 @@
     - ### `ansible all -m gather_facts [-l hostname]`
   - ### Playbook
     - ### `ansible-playbook --syntax-check stage.yml`
+    - ### `ansible-playbook --list-tags stage.yml`
     - ### `ansible-playbook [-l hostname] [-t 'upgrade'] stage.yml`
   - ### Files require by some roles
     - ### Nextcloud

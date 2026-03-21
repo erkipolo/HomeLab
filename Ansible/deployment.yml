@@ -4,6 +4,96 @@
 # other similar distros
 
 ####################################################
+#        KERNEL CONFIGURATION for SECURITY         #
+####################################################
+
+- name: debian server kernel security configuration
+  tags: kernel
+  hosts:
+    - server
+  tasks:
+    - name: Enable reverse path filtering for new network
+      ansible.posix.sysctl:
+        name: net.ipv4.conf.default.rp_filter
+        value: 1
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Enable reverse path filtering for current network
+      ansible.posix.sysctl:
+        name: net.ipv4.conf.all.rp_filter
+        value: 1
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Enable Log Martian Packets on all IPv4 Interfaces
+      ansible.posix.sysctl:
+        name: net.ipv4.conf.all.log_martians
+        value: 1
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Specifies the maximum number of TCP connections
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_max_syn_backlog
+        value: 2048
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Number of SYN packets the Kernel will send before giving up on the new connection
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_synack_retries
+        value: 2
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Cantidad de reintentos de envío del paquete SYN para establecer una nueva conexion
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_syn_retries
+        value: 5
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Ignore Bogus ICMP Error Responses on IPv4 Interfaces
+      ansible.posix.sysctl:
+        name: net.ipv4.icmp_ignore_bogus_error_responses
+        value: 1
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Ensure TCP SYN Cookies is enabled
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_syncookies
+        value: 1
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+    - name: Enables the endpoints to keep a current measurement of the round-trip time (RTT) of the network between them
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_timestamps
+        value: 0
+        sysctl_set: yes
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/90-kernel.conf
+
+####################################################
 #            REPOSITORIES CONFIGURATIONS           #
 ####################################################
 
@@ -136,29 +226,61 @@
         cache_valid_time: 0
 
 ####################################################
-#             INSTALL ADMINISTRATOR TOOLS          #
+#        CREATE A NON ROOT USER for SECURITY       #
 ####################################################
 
-- name: debian admin tools install
-  tags: debian
+- name: debian sudo user with public key
+  tags: sudo-user
   hosts:
     - debian
   tasks:
-    - name: admin tools install
+    - name: Install sudo
       ansible.builtin.apt:
         name:
-          - tmux
-          - vim-nox
-          - bash-completion
+          - sudo
         state: latest
         update_cache: yes
+
+    - name: Ensure group for new user exists
+      ansible.builtin.group:
+        name: "{{ SUDO_USER_NAME }}"
+        state: present
+
+    - name: Create a new user inside sudo group
+      ansible.builtin.user:
+        name: "{{ SUDO_USER_NAME }}"
+        password: "{{ lookup('file', SUDO_USER_PASS) }}"
+        state: present
+        createhome: yes
+        groups: "{{ SUDO_USER_NAME }},users,sudo"
+        shell: /bin/bash
+
+    - name: Add new user public key 
+      ansible.builtin.authorized_key:
+        user: "{{ SUDO_USER_NAME }}"
+        key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
+        state: present
+
+- name: proxmox pam pve user
+  tags: sudo-user
+  hosts:
+    - proxmox
+  tasks:
+    - name: Create a proxmox PAM user Administrator
+      ansible.builtin.blockinfile:
+        path: /etc/pve/user.cfg
+        create: yes
+        block: |
+          user:{{ SUDO_USER_NAME}}@pam:1:0::::::
+          group:{{ SUDO_USER_NAME}}:{{ SUDO_USER_NAME}}@pam::
+          acl:1:/:@{{ SUDO_USER_NAME}}:Administrator:
 
 ####################################################
 #                   SPANISH SUPPORT                #
 ####################################################
 
 - name: debian language spanish support
-  tags: language
+  tags: spanish-support
   hosts:
     - debian
   tasks:
@@ -192,495 +314,29 @@
         name: "America/Havana"
 
 ####################################################
-#      ENABLE UPDATES UNATTENDED for SECURITY      #
+#             INSTALL ADMINISTRATOR TOOLS          #
 ####################################################
 
-- name: debian upgrade unattended install
-  tags: upgrade-unattended
+- name: debian admin tools install
+  tags: admin-tools
   hosts:
     - debian
   tasks:
-    - name: Install Unattended Upgrades
+    - name: admin tools install
       ansible.builtin.apt:
         name:
-          - unattended-upgrades
+          - tmux
+          - vim-tiny
+          - bash-completion
         state: latest
         update_cache: yes
-
-    - name: Setting what and when to unattended upgrades
-      ansible.builtin.copy:
-        dest: /etc/apt/apt.conf.d/52unattended-upgrades
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          Unattended-Upgrade::Origins-Pattern {
-            "origin=Debian,codename=${distro_codename}-updates";
-            "origin=Debian,codename=${distro_codename},label=Debian";
-            "origin=Debian,codename=${distro_codename},label=Debian-Security";
-            "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
-          };
-          Unattended-Upgrade::Package-Blacklist {
-          };
-          Unattended-Upgrade::AutoFixInterruptedDpkg "true";
-          Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
-          Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
-          Unattended-Upgrade::Remove-Unused-Dependencies "true";
-          Unattended-Upgrade::Automatic-Reboot "true";
-          Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
-          Unattended-Upgrade::Automatic-Reboot-Time "04:00";
-      notify: restart_unattended
-
-    - name: Config unattended upgrades log
-      ansible.builtin.copy:
-        dest: /etc/logrotate.d/unattended-upgrades
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          /var/log/unattended-upgrades/unattended-upgrades.log 
-          /var/log/unattended-upgrades/unattended-upgrades-dpkg.log
-          /var/log/unattended-upgrades/unattended-upgrades-shutdown.log
-          {
-            daily
-            dateext
-            dateformat -%Y%m%d-%H%M%S
-            missingok
-            rotate 365
-            compress
-          }
-
-    - name: Enable unattended update, download, upgrade and clean Packages
-      ansible.builtin.copy:
-        dest: /etc/apt/apt.conf.d/20auto-upgrades
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          APT::Periodic::Update-Package-Lists "1";
-          APT::Periodic::Unattended-Upgrade "1";
-          APT::Periodic::AutocleanInterval "7";
-          APT::Periodic::Download-Upgradeable-Packages "1";
-      notify: restart_unattended
-
-  handlers:
-    - name: restart_unattended
-      ansible.builtin.systemd_service:
-        name: unattended-upgrades
-        masked: no
-        enabled: true
-        state: restarted
-
-####################################################
-#        CREATE A NON ROOT USER for SECURITY       #
-####################################################
-
-- name: debian sudo user with public key
-  tags: user
-  hosts:
-    - debian
-  tasks:
-    - name: Install sudo
-      ansible.builtin.apt:
-        name:
-          - sudo
-        state: latest
-        update_cache: yes
-
-    - name: Ensure group for new user exists
-      ansible.builtin.group:
-        name: "{{ SUDO_USER_NAME }}"
-        state: present
-
-    - name: Create a new user inside sudo group
-      ansible.builtin.user:
-        name: "{{ SUDO_USER_NAME }}"
-        password: "{{ lookup('file', SUDO_USER_PASS) }}"
-        state: present
-        createhome: yes
-        groups: "{{ SUDO_USER_NAME }},users,sudo"
-        shell: /bin/bash
-
-    - name: Add new user public key 
-      ansible.builtin.authorized_key:
-        user: "{{ SUDO_USER_NAME }}"
-        key: "{{ lookup('file', SUDO_USER_PUB_KEY) }}"
-        state: present
-
-- name: proxmox pam pve user
-  tags: user
-  hosts:
-    - proxmox
-  tasks:
-    - name: Create a proxmox PAM user Administrator
-      ansible.builtin.blockinfile:
-        path: /etc/pve/user.cfg
-        create: yes
-        block: |
-          user:{{ SUDO_USER_NAME}}@pam:1:0::::::
-          group:{{ SUDO_USER_NAME}}:{{ SUDO_USER_NAME}}@pam::
-          acl:1:/:@{{ SUDO_USER_NAME}}:Administrator:
-
-#####################################################
-# ONLY USE PUBLIC KEYS ON SSH SERVICES for SECURITY #
-#####################################################
-
-- name: debian secure ssh service
-  tags: securessh
-  hosts:
-    - debian
-  tasks:
-    - name: Create a new ssh config file
-      ansible.builtin.blockinfile:
-        path: /etc/ssh/sshd_config.d/SecureSSH.conf
-        create: yes
-        block: |
-          Port 22
-          AddressFamily inet
-          PermitRootLogin no
-          MaxAuthTries 1
-          MaxSessions 2
-          PubkeyAuthentication yes
-          PasswordAuthentication no
-          PermitEmptyPasswords no
-          KbdInteractiveAuthentication no
-          X11Forwarding no
-          AuthenticationMethods publickey
-          KexAlgorithms curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256
-          Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
-          MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
-      notify: restart_ssh
-  handlers:
-    - name: restart_ssh
-      ansible.builtin.systemd_service:
-        name: ssh
-        masked: no
-        enabled: true
-        state: restarted
-
-####################################################
-# HOST INSTRUCTION PREVENTION SYSTEM for SECURITY  #
-####################################################
-
-- name: debian hips install
-  tags: hips-install
-  hosts:
-    - debian
-  tasks:
-    - name: Install fail2ban
-      ansible.builtin.apt:
-        name:
-          - fail2ban
-        state: latest
-        update_cache: yes
-
-    - name: Check if a local config exist
-      ansible.builtin.stat:
-        path: /etc/fail2ban/jail.local
-      register: file_check
-
-    - name: Create a local config file
-      ansible.builtin.copy:
-        src: /etc/fail2ban/jail.conf
-        dest: /etc/fail2ban/jail.local
-        remote_src: true
-        owner: root
-        group: root
-        mode: '0644'
-      when: file_check.stat.exists == false
-
-    - name: Change Ban Time
-      ansible.builtin.lineinfile:
-        dest: /etc/fail2ban/jail.local
-        regexp: "^bantime  = 10m"
-        line: 'bantime  = 10h'
-      notify: restart_fail2ban
-
-    - name: Change Max Retry
-      ansible.builtin.lineinfile:
-        dest: /etc/fail2ban/jail.local
-        regexp: "^maxretry = 5"
-        line: 'maxretry = 3'
-      notify: restart_fail2ban
-
-    - name: Block for a week for reencident
-      ansible.builtin.replace:
-        path: /etc/fail2ban/jail.local
-        regexp: '^(\[recidive\])(?!\n{{data}})'
-        replace: '\1\n{{data}}'
-      vars:
-        data: 'enabled = true'
-      notify: restart_fail2ban
-
-    - name: Setting fail2ban log rotation
-      ansible.builtin.copy:
-        dest: /etc/logrotate.d/fail2ban
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          /var/log/fail2ban.log {
-            daily
-            dateext
-            dateformat -%Y%m%d-%H%M%S
-            missingok
-            rotate 365
-            compress
-            delaycompress
-            su root root
-            create 640 root adm
-            postrotate
-              fail2ban-client flushlogs 1>/dev/null
-            endscript
-          }
-
-  handlers:
-    - name: restart_fail2ban
-      ansible.builtin.systemd_service:
-        name: fail2ban
-        masked: no
-        enabled: true
-        state: restarted
-
-####################################################
-#        HIPS SSH SUPERVISION for SECURITY         #
-####################################################
-
-- name: debian hips ssh supervision
-  tags: hips-ssh
-  hosts:
-    - debian
-  tasks:
-    - name: Enable SSH supervision
-      ansible.builtin.replace:
-        path: /etc/fail2ban/jail.local
-        regexp: '^(\[sshd\])(?!\n{{data}})'
-        replace: '\1\n{{data}}'
-      vars:
-        data: 'enabled = true'
-      notify: restart_fail2ban
-
-  handlers:
-    - name: restart_fail2ban
-      ansible.builtin.systemd_service:
-        name: fail2ban
-        masked: no
-        enabled: true
-        state: restarted
-
-#####################################################
-# SIMPLE NETWORK MANAGEMENT PROTOCOL for MONITORING #
-#####################################################
-
-- name: debian snmpd install
-  tags: snmpd
-  hosts:
-    - debian
-  tasks:
-    - name: Install SNMPD
-      ansible.builtin.apt:
-        name:
-          - snmpd
-        state: latest
-        update_cache: yes
-
-    - name: Enable SNMPD Interfaces Access
-      ansible.builtin.copy:
-        dest: /etc/snmp/snmpd.conf
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          sysLocation   {{ ansible_fqdn }}
-          sysContact    {{ SNMP_CONTACT }}
-          sysServices   72
-          agentaddress  udp:0.0.0.0:161,udp6:[::]:161
-          view          all included .1
-          rocommunity   {{ SNMP_COMMUNITY }} default -V all
-          rocommunity6  {{ SNMP_COMMUNITY }} default -V all
-      notify: restart_snmpd
-
-  handlers:
-    - name: restart_snmpd
-      ansible.builtin.systemd_service:
-        name: snmpd
-        masked: no
-        enabled: true
-        state: restarted
-
-####################################################
-#      RESOURCES and PROCESSES for MONITORING      #
-####################################################
-
-- name: debian monitoring install
-  tags: monit
-  hosts:
-    - debian
-  tasks:
-    - name: Install monit
-      ansible.builtin.apt:
-        name:
-          - monit
-        state: latest
-        update_cache: yes
-
-    - name: Check resources each 1 min
-      ansible.builtin.lineinfile:
-        dest: /etc/monit/monitrc
-        regexp: "^set daemon "
-        line: 'set daemon 60'
-      notify: restart_monit
-
-    - name: Set log file location
-      ansible.builtin.lineinfile:
-        dest: /etc/monit/monitrc
-        regexp: "^set logfile "
-        line: 'set logfile /var/log/monit.log'
-      notify: restart_monit
-
-    - name: Setting monit log rotation
-      ansible.builtin.copy:
-        dest: /etc/logrotate.d/monit
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          /var/log/monit.log {
-            daily
-            dateext
-            dateformat -%Y%m%d-%H%M%S
-            missingok
-            rotate 365
-            compress
-            delaycompress
-            su root root
-            create 640 root adm
-            postrotate
-              invoke-rc.d monit reload > /dev/null
-            endscript
-          }
-
-    - name: Config how to monitor the resources
-      ansible.builtin.copy:
-        dest: /etc/monit/conf.d/CheckResources
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          check system $HOST
-            if loadavg (1min) per core > 2 for 5 cycles then alert
-            if loadavg (5min) per core > 1.5 for 10 cycles then alert
-            if cpu usage > 95% for 10 cycles then alert
-            if memory usage > 75% then alert
-            if swap usage > 25% then alert
-          check filesystem root with path /
-            if space usage > 70% then alert
-      notify: restart_monit
-
-  handlers:
-    - name: restart_monit
-      ansible.builtin.systemd_service:
-        name: monit
-        masked: no
-        enabled: true
-        state: restarted
-
-####################################################
-#        KERNEL CONFIGURATION for SECURITY         #
-####################################################
-
-- name: debian server kernel security configuration
-  tags: kernel
-  hosts:
-    - server
-  tasks:
-    - name: Enable reverse path filtering for new network
-      ansible.posix.sysctl:
-        name: net.ipv4.conf.default.rp_filter
-        value: 1
-        sysctl_set: yes
-        state: present
-        reload: yes
-        sysctl_file: /etc/sysctl.d/90-kernel.conf
-
-    - name: Enable reverse path filtering for current network
-      ansible.posix.sysctl:
-        name: net.ipv4.conf.all.rp_filter
-        value: 1
-        sysctl_set: yes
-        state: present
-        reload: yes
-        sysctl_file: /etc/sysctl.d/90-kernel.conf
-
-    - name: Enable Log Martian Packets on all IPv4 Interfaces
-      ansible.posix.sysctl:
-        name: net.ipv4.conf.all.log_martians
-        value: 1
-        sysctl_set: yes
-        state: present
-        reload: yes
-        sysctl_file: /etc/sysctl.d/90-kernel.conf
-
-    - name: Specifies the maximum number of TCP connections
-      ansible.posix.sysctl:
-        name: net.ipv4.tcp_max_syn_backlog
-        value: 2048
-        sysctl_set: yes
-        state: present
-        reload: yes
-        sysctl_file: /etc/sysctl.d/90-kernel.conf
-
-    - name: Number of SYN packets the Kernel will send before giving up on the new connection
-      ansible.posix.sysctl:
-        name: net.ipv4.tcp_synack_retries
-        value: 2
-        sysctl_set: yes
-        state: present
-        reload: yes
-        sysctl_file: /etc/sysctl.d/90-kernel.conf
-
-    - name: Cantidad de reintentos de envío del paquete SYN para establecer una nueva conexion
-      ansible.posix.sysctl:
-        name: net.ipv4.tcp_syn_retries
-        value: 5
-        sysctl_set: yes
-        state: present
-        reload: yes
-        sysctl_file: /etc/sysctl.d/90-kernel.conf
-
-    - name: Ignore Bogus ICMP Error Responses on IPv4 Interfaces
-      ansible.posix.sysctl:
-        name: net.ipv4.icmp_ignore_bogus_error_responses
-        value: 1
-        sysctl_set: yes
-        state: present
-        reload: yes
-        sysctl_file: /etc/sysctl.d/90-kernel.conf
-
-    - name: Ensure TCP SYN Cookies is enabled
-      ansible.posix.sysctl:
-        name: net.ipv4.tcp_syncookies
-        value: 1
-        sysctl_set: yes
-        state: present
-        reload: yes
-        sysctl_file: /etc/sysctl.d/90-kernel.conf
-
-    - name: Enables the endpoints to keep a current measurement of the round-trip time (RTT) of the network between them
-      ansible.posix.sysctl:
-        name: net.ipv4.tcp_timestamps
-        value: 0
-        sysctl_set: yes
-        state: present
-        reload: yes
-        sysctl_file: /etc/sysctl.d/90-kernel.conf
 
 ##########################################################
 # ENABLE E-MAIL NOTIFICATION for SECURITY and MONITORING #
 ##########################################################
 
 - name: debian server e-mail notification install
-  tags: notification
+  tags: email-notification-enable
   hosts:
     - server
   tasks:
@@ -777,6 +433,8 @@
             missingok
             rotate 365
             compress
+            sharedscripts
+            delaycompress
             su root root
             create 640 root root
             postrotate
@@ -829,25 +487,77 @@
         state: restarted
 
 ####################################################
-#  E-MAIL NOTIFICATION of UNATTENDED UPDATES for   #
-#  MONITORING                                      #
+#      ENABLE UPDATES UNATTENDED for SECURITY      #
 ####################################################
 
-- name: debian server upgrade unattended notification via e-mail
-  tags: notification
+- name: debian upgrade unattended enable
+  tags: upgrade-unattended-enable
   hosts:
-    - server
+    - debian
   tasks:
-    - name: Setting e-mail notification
+    - name: Install Unattended Upgrades
+      ansible.builtin.apt:
+        name:
+          - unattended-upgrades
+        state: latest
+        update_cache: yes
+
+    - name: Setting what and when to unattended upgrades
       ansible.builtin.copy:
-        dest: /etc/apt/apt.conf.d/53unattended-upgrades-notification
+        dest: /etc/apt/apt.conf.d/52unattended-upgrades
         owner: root
         group: root
         mode: '0644'
         content: |
-          Unattended-Upgrade::Sender "{{ ansible_fqdn }}";
-          Unattended-Upgrade::Mail "{{ EMAIL_NOTIFICATION }}";
-          Unattended-Upgrade::MailReport "only-on-error";
+          Unattended-Upgrade::Origins-Pattern {
+            "origin=Debian,codename=${distro_codename}-updates";
+            "origin=Debian,codename=${distro_codename},label=Debian";
+            "origin=Debian,codename=${distro_codename},label=Debian-Security";
+            "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+          };
+          Unattended-Upgrade::Package-Blacklist {
+          };
+          Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+          Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+          Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+          Unattended-Upgrade::Remove-Unused-Dependencies "true";
+          Unattended-Upgrade::Automatic-Reboot "true";
+          Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+          Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+      notify: restart_unattended
+
+    - name: Config unattended upgrades log
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/unattended-upgrades
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /var/log/unattended-upgrades/unattended-upgrades.log 
+          /var/log/unattended-upgrades/unattended-upgrades-dpkg.log
+          /var/log/unattended-upgrades/unattended-upgrades-shutdown.log
+          {
+            daily
+            dateext
+            dateformat -%Y%m%d-%H%M%S
+            missingok
+            rotate 365
+            compress
+            sharedscripts
+            delaycompress
+          }
+
+    - name: Enable unattended update, download, upgrade and clean Packages
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+          APT::Periodic::AutocleanInterval "7";
+          APT::Periodic::Download-Upgradeable-Packages "1";
       notify: restart_unattended
 
   handlers:
@@ -859,67 +569,73 @@
         state: restarted
 
 ####################################################
-#     E-MAIL NOTIFICATION of HIPS for SECURITY     #
+#      RESOURCES and PROCESSES for MONITORING      #
 ####################################################
 
-- name: debian server hips notification via e-mail
-  tags: notification
+- name: debian monitoring install
+  tags: monit-enable
   hosts:
-    - server
+    - debian
   tasks:
-    - name: Setting e-mail notification destination
-      ansible.builtin.lineinfile:
-        dest: /etc/fail2ban/jail.local
-        regexp: "^destemail ="
-        line: "destemail = {{ EMAIL_NOTIFICATION }}"
-      notify: restart_fail2ban
+    - name: Install monit
+      ansible.builtin.apt:
+        name:
+          - monit
+        state: latest
+        update_cache: yes
 
-    - name: Setting e-mail notification sender
-      ansible.builtin.lineinfile:
-        dest: /etc/fail2ban/jail.local
-        regexp: "^sender ="
-        line: "sender = root@{{ ansible_fqdn }}"
-      notify: restart_fail2ban
-
-    - name: Setting MTA
-      ansible.builtin.lineinfile:
-        dest: /etc/fail2ban/jail.local
-        regexp: "^mta = "
-        line: 'mta = mail'
-      notify: restart_fail2ban
-
-    - name: Setting notification action to e-mail
-      ansible.builtin.lineinfile:
-        dest: /etc/fail2ban/jail.local
-        regexp: '^action \= \%\(action\_\)s'
-        line: 'action = %(action_mwl)s'
-      notify: restart_fail2ban
-
-  handlers:
-    - name: restart_fail2ban
-      ansible.builtin.systemd_service:
-        name: fail2ban
-        masked: no
-        enabled: true
-        state: restarted
-
-- name: debian server monitoring notification via e-mail
-  tags: notification
-  hosts:
-    - server
-  tasks:
-    - name: Set the mail server
+    - name: Check resources each 1 min
       ansible.builtin.lineinfile:
         dest: /etc/monit/monitrc
-        regexp: "^set mailserver "
-        line: 'set mailserver localhost'
+        regexp: "^set daemon "
+        line: 'set daemon 60'
       notify: restart_monit
 
-    - name: Setting e-mail notification
+    - name: Set log file location
       ansible.builtin.lineinfile:
         dest: /etc/monit/monitrc
-        regexp: "^set alert "
-        line: 'set alert {{ EMAIL_NOTIFICATION }}'
+        regexp: "^set logfile "
+        line: 'set logfile /var/log/monit.log'
+      notify: restart_monit
+
+    - name: Setting monit log rotation
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/monit
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /var/log/monit.log {
+            daily
+            dateext
+            dateformat -%Y%m%d-%H%M%S
+            missingok
+            rotate 365
+            compress
+            sharedscripts
+            delaycompress
+            su root root
+            create 640 root adm
+            postrotate
+              invoke-rc.d monit reload > /dev/null
+            endscript
+          }
+
+    - name: Config how to monitor the resources
+      ansible.builtin.copy:
+        dest: /etc/monit/conf.d/CheckResources
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          check system $HOST
+            if loadavg (1min) per core > 2 for 5 cycles then alert
+            if loadavg (5min) per core > 1.5 for 10 cycles then alert
+            if cpu usage > 95% for 10 cycles then alert
+            if memory usage > 75% then alert
+            if swap usage > 25% then alert
+          check filesystem root with path /
+            if space usage > 70% then alert
       notify: restart_monit
 
   handlers:
@@ -930,177 +646,52 @@
         enabled: true
         state: restarted
 
-- name: debian server firewall install and add ssh access rules
-  tags: iptables
+#####################################################
+# SIMPLE NETWORK MANAGEMENT PROTOCOL for MONITORING #
+#####################################################
+
+- name: debian snmpd install
+  tags: snmp-enable
   hosts:
-    - server
+    - debian
   tasks:
-    - name: Install iptables
+    - name: Install SNMPD
       ansible.builtin.apt:
-        name: iptables-persistent
+        name:
+          - snmpd
         state: latest
         update_cache: yes
 
-    - name: ACCEPT INPUT ESTABLISHED,RELATED
-      ansible.builtin.iptables:
-        table: filter
-        chain: INPUT
-        chain_management: true
-        state: present
-        action: append
-        ctstate: ESTABLISHED,RELATED
-        jump: ACCEPT
-        comment: 'ESTABLISHED,RELATED'
-      notify: save_rules
-
-    - name: ACCEPT INPUT loopback
-      ansible.builtin.iptables:
-        table: filter
-        chain: INPUT
-        chain_management: true
-        state: present
-        action: append
-        in_interface: lo
-        jump: ACCEPT
-        comment: 'loopback'
-      notify: save_rules
-
-    - name: ACCEPT INPUT PING IPv4
-      ansible.builtin.iptables:
-        table: filter
-        chain: INPUT
-        chain_management: true
-        state: present
-        action: append
-        protocol: icmp
-        jump: ACCEPT
-        comment: 'ICMP'
-        ip_version: ipv4
-      notify: save_rules
-
-    - name: ACCEPT FORWARD ESTABLISHED,RELATED
-      ansible.builtin.iptables:
-        table: filter
-        chain: FORWARD
-        chain_management: true
-        state: present
-        action: append
-        ctstate: ESTABLISHED,RELATED
-        jump: ACCEPT
-        comment: 'ESTABLISHED,RELATED'
-      notify: save_rules
-
-    - name: ACCEPT FORWARD PING IPv4
-      ansible.builtin.iptables:
-        table: filter
-        chain: FORWARD
-        chain_management: true
-        state: present
-        action: append
-        protocol: icmp
-        jump: ACCEPT
-        comment: 'ICMP'
-        ip_version: ipv4
-      notify: save_rules
-
-    - name: ACCEPT INPUT LIMIT SSH IPv4
-      ansible.builtin.iptables:
-        table: filter
-        chain: INPUT
-        chain_management: true
-        state: present
-        action: append
-        protocol: tcp
-        destination_port: 22
-        source: '{{ item }}'
-        ctstate: NEW
-        syn: match
-        limit: 2/second
-        limit_burst: 20
-        jump: ACCEPT
-        comment: 'SSH'
-        ip_version: ipv4
-      loop:
-        - '{{ SSH_CIDR_1 }}'
-        - '{{ SSH_CIDR_2 }}'
-        - '{{ SSH_CIDR_3 }}'
-      notify: save_rules
-
-    - name: DEFAULT DROP INPUT POLICY
-      ansible.builtin.iptables:
-        table: filter
-        chain: INPUT
-        chain_management: true
-        state: present
-        action: append
-        policy: DROP
-        comment: 'DROP INCOMING'
-        ip_version: both
-      notify: save_rules
-
-    - name: DEFAULT DROP FORWARD POLICY
-      ansible.builtin.iptables:
-        table: filter
-        chain: FORWARD
-        chain_management: true
-        state: present
-        action: append
-        policy: DROP
-        comment: 'DROP ROUTED'
-        ip_version: both
-      notify: save_rules
-
-    - name: DEFAULT ACCEPT OUTPUT POLICY
-      ansible.builtin.iptables:
-        table: filter
-        chain: OUTPUT
-        chain_management: true
-        state: present
-        action: append
-        policy: ACCEPT
-        comment: 'ACCEPT OUTGOING'
-        ip_version: both
-      notify: save_rules    
+    - name: Enable SNMPD Interfaces Access
+      ansible.builtin.copy:
+        dest: /etc/snmp/snmpd.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          sysLocation   {{ ansible_fqdn }}
+          sysContact    {{ SNMP_CONTACT }}
+          sysServices   72
+          agentaddress  udp:0.0.0.0:161,udp6:[::]:161
+          view          all included .1
+          rocommunity   {{ SNMP_COMMUNITY }} default -V all
+          rocommunity6  {{ SNMP_COMMUNITY }} default -V all
+      notify: restart_snmpd
 
   handlers:
-    - name: save_rules
-      ansible.builtin.shell: |
-        iptables-save > /etc/iptables/rules.v4
-        ip6tables-save > /etc/iptables/rules.v6
+    - name: restart_snmpd
+      ansible.builtin.systemd_service:
+        name: snmpd
+        masked: no
+        enabled: true
+        state: restarted
 
-- name: debian server firewall add snmp access rules
-  tags: iptables
-  hosts:
-    - server
-  tasks:
-    - name: ACCEPT INPUT SNMP IPv4
-      tags: IptablesSNMP
-      ansible.builtin.iptables:
-        table: filter
-        chain: INPUT
-        chain_management: true
-        state: present
-        action: append
-        protocol: udp
-        destination_port: 161
-        source: '{{ item }}'
-        ctstate: NEW
-        jump: ACCEPT
-        comment: 'SNMP'
-        ip_version: ipv4
-      loop:
-        - '{{ SNMP_CIDR_1 }}'
-        - '{{ SNMP_CIDR_2 }}'
-        - '{{ SNMP_CIDR_3 }}'
-      notify: save_rules
-  handlers:
-    - name: save_rules
-      ansible.builtin.shell: |
-        iptables-save > /etc/iptables/rules.v4
-        ip6tables-save > /etc/iptables/rules.v6
+#####################################################
+#          DOMAIN NAME SYSTEM for SERVICE           #
+#####################################################
 
 - name: debian server dns install
-  tags: dns
+  tags: dns-enable
   hosts:
     - dns
   tasks:
@@ -1162,6 +753,8 @@
             missingok
             rotate 365
             compress
+            sharedscripts
+            delaycompress
             create 660 bind bind
             postrotate
               /usr/sbin/rndc reconfig > /dev/null 2>/dev/null || true
@@ -1176,137 +769,12 @@
         enabled: true
         state: restarted
 
-- name: debian server firewall add dns access rules
-  tags: iptables
-  hosts:
-    - dns
-  tasks:
-    - name: ACCEPT INPUT DNS IPv4
-      ansible.builtin.iptables:
-        table: filter
-        chain: INPUT
-        chain_management: true
-        state: present
-        action: append
-        protocol: udp
-        destination_port: 53
-        source: '{{ item }}'
-        ctstate: NEW
-        jump: ACCEPT
-        comment: 'DNS'
-        ip_version: ipv4
-      loop:
-        - '{{ DNS_CIDR_1 }}'
-        - '{{ DNS_CIDR_2 }}'
-        - '{{ DNS_CIDR_3 }}'
-      notify: save_rules
-
-  handlers:
-    - name: save_rules
-      ansible.builtin.shell: |
-        iptables-save > /etc/iptables/rules.v4
-        ip6tables-save > /etc/iptables/rules.v6
-
-- name: debian server dns edge configuration
-  tags: edge
-  hosts:
-    - dns
-    - edge
-  tasks:
-    - name: Setting external options
-      ansible.builtin.copy:
-        dest: /etc/bind/named.conf.options
-        owner: root
-        group: bind
-        mode: '0644'
-        content: |
-          options {
-            directory "/var/cache/bind";
-            allow-query { any; };
-            allow-transfer { localhost; };
-            recursion no;
-            dnssec-validation auto;
-            listen-on port 53 { any; };
-            listen-on-v6 { any; };
-            version "";
-            rate-limit {
-              ipv4-prefix-length 32;
-              window 10;
-              responses-per-second 25;
-              errors-per-second 5;
-              nxdomains-per-second 5;
-              slip 2;
-            };
-          };
-      notify: restart_bind9
-
-    - name: add external zones file configuration
-      ansible.builtin.lineinfile:
-        path: /etc/bind/named.conf
-        insertafter: 'hints\"\;$'
-        line: 'include "/etc/bind/{{ named_conf_external_zone }}";'
-        state: present
-      notify: restart_bind9
-
-    - name: copy external zones configuration
-      ansible.builtin.copy:
-        src: '{{ named_conf_external_zone }}'
-        dest: /etc/bind/{{ named_conf_external_zone }}
-        owner: root
-        group: bind
-        mode: '0644'
-      notify: restart_bind9
-
-    - name: copy external direct zone configuration
-      ansible.builtin.copy:
-        src: '{{ named_conf_external_zone_dir }}'
-        dest: /var/cache/bind/zone.dir
-        owner: root
-        group: bind
-        mode: '0644'
-      notify: restart_bind9
-
-    - name: copy external invert zone configuration
-      ansible.builtin.copy:
-        src: '{{ named_conf_external_zone_inv }}'
-        dest: /var/cache/bind/zone.inv
-        owner: root
-        group: bind
-        mode: '0644'
-      notify: restart_bind9
-
-  handlers:
-    - name: restart_bind9
-      ansible.builtin.systemd_service:
-        name: bind9
-        masked: no
-        enabled: true
-        state: restarted
-### bugs
-- name: debian hips dns supervision
-  tags: hips-dns
-  hosts:
-    - dns
-  tasks:
-    - name: Enable DNS supervision
-      ansible.builtin.replace:
-        path: /etc/fail2ban/jail.local
-        regexp: '^(\[named-refused\])(?!\n{{data}})'
-        replace: '\1\n{{data}}'
-      vars:
-        data: 'enabled = true'
-      notify: restart_fail2ban
-
-  handlers:
-    - name: restart_fail2ban
-      ansible.builtin.systemd_service:
-        name: fail2ban
-        masked: no
-        enabled: true
-        state: restarted
+#####################################################
+#            WEB for SERVICE via APACHE             #
+#####################################################
 
 - name: debian server apache install
-  tags: lamp, web
+  tags: web-enable, lamp-stack
   hosts:
     - lamp
     - web
@@ -1333,8 +801,9 @@
             missingok
             rotate 365
             compress
-            create 640 root adm
             sharedscripts
+            delaycompress
+            create 640 root adm
             prerotate
               if [ -d /etc/logrotate.d/httpd-prerotate ]; then
                 run-parts /etc/logrotate.d/httpd-prerotate
@@ -1347,272 +816,12 @@
             endscript
           }
 
-    - name: Enable SSL module with dependencies
-      ansible.builtin.file:
-        src: /etc/apache2/mods-available/{{ item }}
-        dest: /etc/apache2/mods-enabled/{{ item }}
-        state: link
-      loop:
-         - rewrite.load
-         - socache_shmcb.load
-         - ssl.load
-         - ssl.conf
-      notify: restart_apache
-
-    - name: Force HTTP redirect to HTTPS
-      ansible.builtin.copy:
-        dest: /etc/apache2/sites-available/000-default.conf
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          <VirtualHost *:80>
-            RewriteEngine On
-            RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
-          </VirtualHost>
-      notify: restart_apache
-
-    - name: Enable default SSL site
-      ansible.builtin.file:
-        src: /etc/apache2/sites-available/default-ssl.conf
-        dest: /etc/apache2/sites-enabled/default-ssl.conf
-        state: link
-      notify: restart_apache
-
-  handlers:
-    - name: restart_apache
-      ansible.builtin.systemd_service:
-        name: apache2
-        masked: no
-        enabled: true
-        state: restarted
-
-- name: debian server apache security module
-  tags: lamp, web
-  hosts:
-    - lamp
-    - web
-  tasks:
-    - name: Install apache security module
-      ansible.builtin.apt:
-        name:
-          - libapache2-mod-security2
-        state: latest
-        update_cache: yes
-
-    - name: Enable apache security module
-      ansible.builtin.file:
-        src: /etc/apache2/mods-available/{{ item }}
-        dest: /etc/apache2/mods-enabled/{{ item }}
-        state: link
-      loop:
-         - security2.load
-         - security2.conf
-      notify: restart_apache
-
-    - name: Check if a local config file exist
-      ansible.builtin.stat:
-        path: /etc/modsecurity/modsecurity.conf
-      register: file_check
-
-    - name: Create a local config file
-      ansible.builtin.copy:
-        src: /etc/modsecurity/modsecurity.conf-recommended
-        dest: /etc/modsecurity/modsecurity.conf
-        remote_src: true
-        owner: root
-        group: root
-        mode: '0644'
-      when: file_check.stat.exists == false
-      notify: restart_apache
-
-    - name: Enable Rule Engine
-      ansible.builtin.lineinfile:
-        dest: /etc/modsecurity/modsecurity.conf
-        regexp: "^SecRuleEngine"
-        line: 'SecRuleEngine On'
-      notify: restart_apache
-
-    - name: Setting Tokens to Prod
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/conf-available/security.conf
-        regexp: "^ServerTokens"
-        line: 'ServerTokens Prod'
-      notify: restart_apache
-
-    - name: Disable Signature
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/conf-available/security.conf
-        regexp: "^ServerSignature"
-        line: 'ServerSignature Off'
-      notify: restart_apache
-
-    - name: Allow access request bodies
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/conf-available/security.conf
-        regexp: "^SecRequestBodyAccess"
-        line: 'SecRequestBodyAccess On'
-      notify: restart_apache
-
-    - name: Allow access response bodies
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/conf-available/security.conf
-        regexp: "^SecResponseBodyAccess"
-        line: 'SecResponseBodyAccess On'
-      notify: restart_apache
-
-    - name: Which response MIME types do you want to inspect
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/conf-available/security.conf
-        regexp: "^SecResponseBodyMimeType"
-        line: 'SecResponseBodyMimeType text/plain text/html text/xml application/octet-stream'
-      notify: restart_apache
-
-    - name: The location where ModSecurity will keep its persistent data
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/conf-available/security.conf
-        regexp: "^SecDataDir"
-        line: 'SecDataDir /tmp/'
-      notify: restart_apache
-
-    - name: Install the OWASP Core Rule Set
-      ansible.builtin.apt:
-        name:
-          - modsecurity-crs
-        state: latest
-        update_cache: yes
-      notify: restart_apache
-
-  handlers:
-    - name: restart_apache
-      ansible.builtin.systemd_service:
-        name: apache2
-        masked: no
-        enabled: true
-        state: restarted
-
-- name: debian server apache evasive module
-  tags: lamp, web
-  hosts:
-    - lamp
-    - web
-  tasks:
-    - name: Install apache evasive module
-      ansible.builtin.apt:
-        name:
-          - libapache2-mod-evasive
-        state: latest
-        update_cache: yes
-
-    - name: Enable evasive module
-      ansible.builtin.file:
-        src: /etc/apache2/mods-available/{{ item }}
-        dest: /etc/apache2/mods-enabled/{{ item }}
-        state: link
-      loop:
-         - evasive.load
-         - evasive.conf
-      notify: restart_apache
-
-    - name: Setting the Track of who is accesing what
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/mods-available/evasive.conf
-        regexp: "^    #DOSHashTableSize"
-        line: '    DOSHashTableSize    3079'
-      notify: restart_apache
-
-    - name: Setting the threshold for the number of requests for the same page
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/mods-available/evasive.conf
-        regexp: "^    #DOSPageCount"
-        line: '    DOSPageCount        2'
-      notify: restart_apache
-
-    - name: Setting the threshold for the total number of requests for any object by the same client per site
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/mods-available/evasive.conf
-        regexp: "^    #DOSSiteCount"
-        line: '    DOSSiteCount        50'
-      notify: restart_apache
-
-    - name: Setting the interval used in the page count
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/mods-available/evasive.conf
-        regexp: "^    #DOSPageInterval"
-        line: '    DOSPageInterval     1'
-      notify: restart_apache
-
-    - name: Setting the interval used in the site count
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/mods-available/evasive.conf
-        regexp: "^    #DOSSiteInterval"
-        line: '    DOSSiteInterval     1'
-      notify: restart_apache
-
-    - name: Setting the amount of time (in seconds) that an IP is blocked
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/mods-available/evasive.conf
-        regexp: "^    #DOSBlockingPeriod"
-        line: '    DOSBlockingPeriod   10'
-      notify: restart_apache
-
-    - name: Creating the log directory
-      ansible.builtin.file:
-        path: /var/log/mod_evasive
-        state: directory
-        owner: www-data
-        group: www-data
-        mode: '0755'
-
-    - name: Setting the log directory location
-      ansible.builtin.lineinfile:
-        dest: /etc/apache2/mods-available/evasive.conf
-        regexp: "^    #DOSLogDir"
-        line: '    DOSLogDir           "/var/log/mod_evasive"'
-      notify: restart_apache
-
-  handlers:
-    - name: restart_apache
-      ansible.builtin.systemd_service:
-        name: apache2
-        masked: no
-        enabled: true
-        state: restarted
-
-- name: debian server firewall add http(s) access rules
-  tags: iptables
-  hosts:
-    - lamp
-    - web
-  tasks:
-    - name: ACCEPT INPUT HTTP(S) IPv4
-      ansible.builtin.iptables:
-        table: filter
-        chain: INPUT
-        chain_management: true
-        state: present
-        action: append
-        protocol: tcp
-        destination_ports: 80,443
-        source: '{{ item }}'
-        ctstate: NEW
-        jump: ACCEPT
-        comment: 'HTTP(S)'
-        ip_version: ipv4
-      loop:
-        - '{{ WEB_CIDR_1 }}'
-        - '{{ WEB_CIDR_2 }}'
-        - '{{ WEB_CIDR_3 }}'
-      notify: save_rules
-
-  handlers:
-    - name: save_rules
-      ansible.builtin.shell: |
-        iptables-save > /etc/iptables/rules.v4
-        ip6tables-save > /etc/iptables/rules.v6
+#####################################################
+#         DATABASE for SERVICE via MARIADB          #
+#####################################################
 
 - name: debian server mariadb install
-  tags: lamp, database
+  tags: database-enable, lamp-stack
   hosts:
     - lamp
     - database
@@ -1624,15 +833,88 @@
         state: latest
         update_cache: yes
 
-    - name: Install Ansible MariaDB support
+    - name: Install Ansible support for MariaDB
       ansible.builtin.apt:
         name:
           - python3-mysqldb
         state: latest
         update_cache: yes
 
+    - name: Creating the log directory
+      ansible.builtin.file:
+        path: /var/log/mysql
+        state: directory
+        owner: mysql
+        group: mysql
+        mode: '0755'
+
+    - name: Setting general log file
+      ansible.builtin.lineinfile:
+        dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+        regexp: "^#general_log_file"
+        line: 'general_log_file       = /var/log/mysql/mysql.log'
+      notify: restart_mariadb
+
+    - name: Enable general log file
+      ansible.builtin.lineinfile:
+        dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+        regexp: "^#general_log  "
+        line: 'general_log            = 1'
+      notify: restart_mariadb
+
+    - name: Setting log error file
+      ansible.builtin.lineinfile:
+        dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+        regexp: "^#log_error ="
+        line: 'log_error = /var/log/mysql/error.log'
+      notify: restart_mariadb
+
+    - name: Config mariadb log rotation
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/mariadb
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /var/lib/mysql/mysqld.log /var/lib/mysql/mariadb.log /var/log/mysql/*.log {
+            daily
+            dateext
+            dateformat -%Y%m%d-%H%M%S
+            missingok
+            rotate 365
+            compress
+            sharedscripts
+            delaycompress
+            su mysql mysql
+            create 640 mysql mysql
+            postrotate
+              if test -r /etc/mysql/debian.cnf
+              then
+                EXTRAPARAM='--defaults-file=/etc/mysql/debian.cnf'
+              fi
+
+              if test -x /usr/bin/mariadb-admin
+              then
+                /usr/bin/mariadb-admin $EXTRAPARAM --local flush-error-log \
+                  flush-engine-log flush-general-log flush-slow-log
+              fi
+            endscript
+          }
+
+  handlers:
+    - name: restart_mariadb
+      ansible.builtin.systemd_service:
+        name: mariadb
+        masked: no
+        enabled: true
+        state: restarted
+
+#####################################################
+#      (L)inux (A)pache (M)ariadb (P)hp Stack       #
+#####################################################
+
 - name: debian server php install
-  tags: lamp
+  tags: lamp-stack
   hosts:
     - lamp
   tasks:
@@ -1872,6 +1154,1011 @@
         masked: no
         enabled: true
         state: restarted
+
+#####################################################
+# ONLY USE PUBLIC KEYS ON SSH SERVICES for SECURITY #
+#####################################################
+
+- name: debian secure ssh service
+  tags: ssh-secure
+  hosts:
+    - debian
+  tasks:
+    - name: Create a new ssh config file
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config.d/SecureSSH.conf
+        create: yes
+        block: |
+          Port 22
+          AddressFamily inet
+          PermitRootLogin no
+          MaxAuthTries 1
+          MaxSessions 2
+          PubkeyAuthentication yes
+          PasswordAuthentication no
+          PermitEmptyPasswords no
+          KbdInteractiveAuthentication no
+          X11Forwarding no
+          AuthenticationMethods publickey
+          KexAlgorithms curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256
+          Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+          MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
+      notify: restart_ssh
+  handlers:
+    - name: restart_ssh
+      ansible.builtin.systemd_service:
+        name: ssh
+        masked: no
+        enabled: true
+        state: restarted
+
+#####################################################
+#         HTTPS WEB for SERVICE via APACHE          #
+#####################################################
+
+- name: debian server apache security module
+  tags: web-secure
+  hosts:
+    - lamp
+    - web
+  tasks:
+    - name: Enable SSL module with dependencies
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - rewrite.load
+         - socache_shmcb.load
+         - ssl.load
+         - ssl.conf
+      notify: restart_apache
+
+    - name: Force HTTP redirect to HTTPS
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/000-default.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:80>
+            RewriteEngine On
+            RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
+          </VirtualHost>
+      notify: restart_apache
+
+    - name: Enable default SSL site
+      ansible.builtin.file:
+        src: /etc/apache2/sites-available/default-ssl.conf
+        dest: /etc/apache2/sites-enabled/default-ssl.conf
+        state: link
+      notify: restart_apache
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+#####################################################
+#         OWASP WEB for SERVICE via APACHE          #
+#####################################################
+
+- name: debian server apache security module
+  tags: web-secure
+  hosts:
+    - lamp
+    - web
+  tasks:
+    - name: Install apache security module
+      ansible.builtin.apt:
+        name:
+          - libapache2-mod-security2
+        state: latest
+        update_cache: yes
+
+    - name: Enable apache security module
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - security2.load
+         - security2.conf
+      notify: restart_apache
+
+    - name: Check if a local config file exist
+      ansible.builtin.stat:
+        path: /etc/modsecurity/modsecurity.conf
+      register: file_check
+
+    - name: Create a local config file
+      ansible.builtin.copy:
+        src: /etc/modsecurity/modsecurity.conf-recommended
+        dest: /etc/modsecurity/modsecurity.conf
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0644'
+      when: file_check.stat.exists == false
+      notify: restart_apache
+
+    - name: Enable Rule Engine
+      ansible.builtin.lineinfile:
+        dest: /etc/modsecurity/modsecurity.conf
+        regexp: "^SecRuleEngine"
+        line: 'SecRuleEngine On'
+      notify: restart_apache
+
+    - name: Setting Tokens to Prod
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^ServerTokens"
+        line: 'ServerTokens Prod'
+      notify: restart_apache
+
+    - name: Disable Signature
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^ServerSignature"
+        line: 'ServerSignature Off'
+      notify: restart_apache
+
+    - name: Allow access request bodies
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^SecRequestBodyAccess"
+        line: 'SecRequestBodyAccess On'
+      notify: restart_apache
+
+    - name: Allow access response bodies
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^SecResponseBodyAccess"
+        line: 'SecResponseBodyAccess On'
+      notify: restart_apache
+
+    - name: Which response MIME types do you want to inspect
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^SecResponseBodyMimeType"
+        line: 'SecResponseBodyMimeType text/plain text/html text/xml application/octet-stream'
+      notify: restart_apache
+
+    - name: The location where ModSecurity will keep its persistent data
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/conf-available/security.conf
+        regexp: "^SecDataDir"
+        line: 'SecDataDir /tmp/'
+      notify: restart_apache
+
+    - name: Install the OWASP Core Rule Set
+      ansible.builtin.apt:
+        name:
+          - modsecurity-crs
+        state: latest
+        update_cache: yes
+      notify: restart_apache
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+#####################################################
+#         HIPS WEB for SERVICE via APACHE           #
+#####################################################
+
+- name: debian server apache evasive module
+  tags: web-secure
+  hosts:
+    - lamp
+    - web
+  tasks:
+    - name: Install apache evasive module
+      ansible.builtin.apt:
+        name:
+          - libapache2-mod-evasive
+        state: latest
+        update_cache: yes
+
+    - name: Enable evasive module
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - evasive.load
+         - evasive.conf
+      notify: restart_apache
+
+    - name: Setting the Track of who is accesing what
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSHashTableSize"
+        line: '    DOSHashTableSize    3079'
+      notify: restart_apache
+
+    - name: Setting the threshold for the number of requests for the same page
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSPageCount"
+        line: '    DOSPageCount        2'
+      notify: restart_apache
+
+    - name: Setting the threshold for the total number of requests for any object by the same client per site
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSSiteCount"
+        line: '    DOSSiteCount        50'
+      notify: restart_apache
+
+    - name: Setting the interval used in the page count
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSPageInterval"
+        line: '    DOSPageInterval     1'
+      notify: restart_apache
+
+    - name: Setting the interval used in the site count
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSSiteInterval"
+        line: '    DOSSiteInterval     1'
+      notify: restart_apache
+
+    - name: Setting the amount of time (in seconds) that an IP is blocked
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSBlockingPeriod"
+        line: '    DOSBlockingPeriod   10'
+      notify: restart_apache
+
+    - name: Creating the log directory
+      ansible.builtin.file:
+        path: /var/log/mod_evasive
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Setting the log directory location
+      ansible.builtin.lineinfile:
+        dest: /etc/apache2/mods-available/evasive.conf
+        regexp: "^    #DOSLogDir"
+        line: '    DOSLogDir           "/var/log/mod_evasive"'
+      notify: restart_apache
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+#####################################################
+#               DNS EDGE for SERVICE                #
+#####################################################
+
+- name: debian server dns edge configuration
+  tags: dns-edge
+  hosts:
+    - dnsedge
+  tasks:
+    - name: Setting external options
+      ansible.builtin.copy:
+        dest: /etc/bind/named.conf.options
+        owner: root
+        group: bind
+        mode: '0644'
+        content: |
+          options {
+            directory "/var/cache/bind";
+            allow-query { any; };
+            allow-transfer { localhost; };
+            recursion no;
+            dnssec-validation auto;
+            listen-on port 53 { any; };
+            listen-on-v6 { any; };
+            version "";
+            rate-limit {
+              ipv4-prefix-length 32;
+              window 10;
+              responses-per-second 25;
+              errors-per-second 5;
+              nxdomains-per-second 5;
+              slip 2;
+            };
+          };
+      notify: restart_bind9
+
+    - name: add external zones file configuration
+      ansible.builtin.lineinfile:
+        path: /etc/bind/named.conf
+        insertafter: 'hints\"\;$'
+        line: 'include "/etc/bind/{{ named_conf_external_zone }}";'
+        state: present
+      notify: restart_bind9
+
+    - name: copy external zones configuration
+      ansible.builtin.copy:
+        src: '{{ named_conf_external_zone }}'
+        dest: /etc/bind/{{ named_conf_external_zone }}
+        owner: root
+        group: bind
+        mode: '0644'
+      notify: restart_bind9
+
+    - name: copy external direct zone configuration
+      ansible.builtin.copy:
+        src: '{{ named_conf_external_zone_dir }}'
+        dest: /var/cache/bind/zone.dir
+        owner: root
+        group: bind
+        mode: '0644'
+      notify: restart_bind9
+
+    - name: copy external invert zone configuration
+      ansible.builtin.copy:
+        src: '{{ named_conf_external_zone_inv }}'
+        dest: /var/cache/bind/zone.inv
+        owner: root
+        group: bind
+        mode: '0644'
+      notify: restart_bind9
+
+  handlers:
+    - name: restart_bind9
+      ansible.builtin.systemd_service:
+        name: bind9
+        masked: no
+        enabled: true
+        state: restarted
+
+#####################################################
+#               FIREWALL for SECURITY               #
+#####################################################
+
+- name: debian server firewall install and add ssh access rules
+  tags: iptables-enable
+  hosts:
+    - server
+  tasks:
+    - name: Install iptables
+      ansible.builtin.apt:
+        name: iptables-persistent
+        state: latest
+        update_cache: yes
+
+    - name: ACCEPT INPUT ESTABLISHED,RELATED
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+        comment: 'ESTABLISHED,RELATED'
+      notify: save_rules
+
+    - name: ACCEPT INPUT loopback
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        in_interface: lo
+        jump: ACCEPT
+        comment: 'loopback'
+      notify: save_rules
+
+    - name: ACCEPT INPUT PING IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: icmp
+        jump: ACCEPT
+        comment: 'ICMP'
+        ip_version: ipv4
+      notify: save_rules
+
+    - name: ACCEPT FORWARD ESTABLISHED,RELATED
+      ansible.builtin.iptables:
+        table: filter
+        chain: FORWARD
+        chain_management: true
+        state: present
+        action: append
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+        comment: 'ESTABLISHED,RELATED'
+      notify: save_rules
+
+    - name: ACCEPT FORWARD PING IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: FORWARD
+        chain_management: true
+        state: present
+        action: append
+        protocol: icmp
+        jump: ACCEPT
+        comment: 'ICMP'
+        ip_version: ipv4
+      notify: save_rules
+
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
+
+#####################################################
+#          FIREWALL allow SSH for SECURITY          #
+#####################################################
+
+- name: debian server firewall add snmp access rules
+  tags: iptables-ssh
+  hosts:
+    - server
+  tasks:
+    - name: ACCEPT INPUT LIMIT SSH IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: tcp
+        destination_port: 22
+        source: '{{ item }}'
+        ctstate: NEW
+        syn: match
+        limit: 2/second
+        limit_burst: 20
+        jump: ACCEPT
+        comment: 'SSH'
+        ip_version: ipv4
+      loop:
+        - '{{ SSH_CIDR_1 }}'
+        - '{{ SSH_CIDR_2 }}'
+        - '{{ SSH_CIDR_3 }}'
+      notify: save_rules
+
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
+
+#####################################################
+#       FIREWALL allow SNMP for MONITORING          #
+#####################################################
+
+- name: debian server firewall add snmp access rules
+  tags: iptables-snmp
+  hosts:
+    - server
+  tasks:
+    - name: ACCEPT INPUT SNMP IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: udp
+        destination_port: 161
+        source: '{{ item }}'
+        ctstate: NEW
+        jump: ACCEPT
+        comment: 'SNMP'
+        ip_version: ipv4
+      loop:
+        - '{{ SNMP_CIDR_1 }}'
+        - '{{ SNMP_CIDR_2 }}'
+        - '{{ SNMP_CIDR_3 }}'
+      notify: save_rules
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
+
+#####################################################
+#          FIREWALL allow DNS for SERVICES          #
+#####################################################
+
+- name: debian server firewall add dns access rules
+  tags: iptables-dns
+  hosts:
+    - dns
+  tasks:
+    - name: ACCEPT INPUT DNS IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: udp
+        destination_port: 53
+        source: '{{ item }}'
+        ctstate: NEW
+        jump: ACCEPT
+        comment: 'DNS'
+        ip_version: ipv4
+      loop:
+        - '{{ DNS_CIDR_1 }}'
+        - '{{ DNS_CIDR_2 }}'
+        - '{{ DNS_CIDR_3 }}'
+      notify: save_rules
+
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
+
+#####################################################
+#          FIREWALL allow WEB for SERVICES          #
+#####################################################
+
+- name: debian server firewall add http(s) access rules
+  tags: iptables-web, lamp-stack
+  hosts:
+    - lamp
+    - web
+  tasks:
+    - name: ACCEPT INPUT HTTP(S) IPv4
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        protocol: tcp
+        destination_ports: 80,443
+        source: '{{ item }}'
+        ctstate: NEW
+        jump: ACCEPT
+        comment: 'HTTP(S)'
+        ip_version: ipv4
+      loop:
+        - '{{ WEB_CIDR_1 }}'
+        - '{{ WEB_CIDR_2 }}'
+        - '{{ WEB_CIDR_3 }}'
+      notify: save_rules
+
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
+
+#####################################################
+#        FIREWALL default POLICY for SECURITY       #
+#####################################################
+
+- name: debian server firewall install and add ssh access rules
+  tags: iptables-policy
+  hosts:
+    - server
+  tasks:
+    - name: DEFAULT DROP INPUT POLICY
+      ansible.builtin.iptables:
+        table: filter
+        chain: INPUT
+        chain_management: true
+        state: present
+        action: append
+        policy: DROP
+        comment: 'DROP INCOMING'
+        ip_version: both
+      notify: save_rules
+
+    - name: DEFAULT DROP FORWARD POLICY
+      ansible.builtin.iptables:
+        table: filter
+        chain: FORWARD
+        chain_management: true
+        state: present
+        action: append
+        policy: DROP
+        comment: 'DROP ROUTED'
+        ip_version: both
+      notify: save_rules
+
+    - name: DEFAULT ACCEPT OUTPUT POLICY
+      ansible.builtin.iptables:
+        table: filter
+        chain: OUTPUT
+        chain_management: true
+        state: present
+        action: append
+        policy: ACCEPT
+        comment: 'ACCEPT OUTGOING'
+        ip_version: both
+      notify: save_rules    
+
+  handlers:
+    - name: save_rules
+      ansible.builtin.shell: |
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables-save > /etc/iptables/rules.v6
+
+####################################################
+# HOST INSTRUCTION PREVENTION SYSTEM for SECURITY  #
+####################################################
+
+- name: debian hips install
+  tags: hips-enable
+  hosts:
+    - debian
+  tasks:
+    - name: Install fail2ban
+      ansible.builtin.apt:
+        name:
+          - fail2ban
+        state: latest
+        update_cache: yes
+
+    - name: Check if a local config exist
+      ansible.builtin.stat:
+        path: /etc/fail2ban/jail.local
+      register: file_check
+
+    - name: Create a local config file
+      ansible.builtin.copy:
+        src: /etc/fail2ban/jail.conf
+        dest: /etc/fail2ban/jail.local
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0644'
+      when: file_check.stat.exists == false
+
+    - name: Change Ban Time
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^bantime  = 10m"
+        line: 'bantime  = 10h'
+      notify: restart_fail2ban
+
+    - name: Change Max Retry
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^maxretry = 5"
+        line: 'maxretry = 3'
+      notify: restart_fail2ban
+
+    - name: Block for a week for reencident
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[recidive\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+    - name: Setting fail2ban log rotation
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/fail2ban
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /var/log/fail2ban.log {
+            daily
+            dateext
+            dateformat -%Y%m%d-%H%M%S
+            missingok
+            rotate 365
+            compress
+            sharedscripts
+            delaycompress
+            su root root
+            create 640 root adm
+            postrotate
+              fail2ban-client flushlogs 1>/dev/null
+            endscript
+          }
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
+####################################################
+#        HIPS SSH SUPERVISION for SECURITY         #
+####################################################
+
+- name: debian hips ssh supervision
+  tags: hips-ssh
+  hosts:
+    - debian
+  tasks:
+    - name: Enable SSH supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[sshd\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
+####################################################
+#        HIPS DNS SUPERVISION for SECURITY         #
+####################################################
+
+- name: debian hips dns supervision
+  tags: hips-dns
+  hosts:
+    - dns
+  tasks:
+    - name: Enable DNS supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[named-refused\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
+####################################################
+#        HIPS WEB SUPERVISION for SECURITY         #
+####################################################
+
+- name: debian hips dns supervision
+  tags: hips-web
+  hosts:
+    - lamp
+    - web
+  tasks:
+    - name: Enable auth supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[apache-auth\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+    - name: Enable badbots supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[apache-badbots\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+    - name: Enable noscript supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[apache-noscript\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+    - name: Enable overflows supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[apache-overflows\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+    - name: Enable nohome supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[apache-nohome\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+    - name: Enable botsearch supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[apache-botsearch\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+    - name: Enable fakegooglebot supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[apache-fakegooglebot\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+    - name: Enable modsecurity supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[apache-modsecurity\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+    - name: Enable shellshock supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[apache-shellshock\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
+####################################################
+#  E-MAIL NOTIFICATION of UNATTENDED UPDATES for   #
+#  MONITORING                                      #
+####################################################
+
+- name: debian server upgrade unattended notification via e-mail
+  tags: upgrade-unattended-notification
+  hosts:
+    - server
+  tasks:
+    - name: Setting e-mail notification
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/53unattended-upgrades-notification
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          Unattended-Upgrade::Sender "{{ ansible_fqdn }}";
+          Unattended-Upgrade::Mail "{{ EMAIL_NOTIFICATION }}";
+          Unattended-Upgrade::MailReport "only-on-error";
+      notify: restart_unattended
+
+  handlers:
+    - name: restart_unattended
+      ansible.builtin.systemd_service:
+        name: unattended-upgrades
+        masked: no
+        enabled: true
+        state: restarted
+
+#################################################################
+# E-MAIL NOTIFICATION of RESOURCES and PROCESSES for MONITORING #
+#################################################################
+
+- name: debian server monitoring notification via e-mail
+  tags: monit-notification
+  hosts:
+    - server
+  tasks:
+    - name: Set the mail server
+      ansible.builtin.lineinfile:
+        dest: /etc/monit/monitrc
+        regexp: "^set mailserver "
+        line: 'set mailserver localhost'
+      notify: restart_monit
+
+    - name: Setting e-mail notification
+      ansible.builtin.lineinfile:
+        dest: /etc/monit/monitrc
+        regexp: "^set alert "
+        line: 'set alert {{ EMAIL_NOTIFICATION }}'
+      notify: restart_monit
+
+  handlers:
+    - name: restart_monit
+      ansible.builtin.systemd_service:
+        name: monit
+        masked: no
+        enabled: true
+        state: restarted
+
+####################################################
+#     E-MAIL NOTIFICATION of HIPS for SECURITY     #
+####################################################
+
+- name: debian server hips notification via e-mail
+  tags: hips-notification
+  hosts:
+    - server
+  tasks:
+    - name: Setting e-mail notification destination
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^destemail ="
+        line: "destemail = {{ EMAIL_NOTIFICATION }}"
+      notify: restart_fail2ban
+
+    - name: Setting e-mail notification sender
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^sender ="
+        line: "sender = root@{{ ansible_fqdn }}"
+      notify: restart_fail2ban
+
+    - name: Setting MTA
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: "^mta = "
+        line: 'mta = mail'
+      notify: restart_fail2ban
+
+    - name: Setting notification action to e-mail
+      ansible.builtin.lineinfile:
+        dest: /etc/fail2ban/jail.local
+        regexp: '^action \= \%\(action\_\)s'
+        line: 'action = %(action_mwl)s'
+      notify: restart_fail2ban
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 - name: debian server nextcloud install
   tags: nextcloud
