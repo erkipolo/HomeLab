@@ -6,8 +6,19 @@ $TTL 86400
         604800      ;Expire
         86400       ;Minimum TTL
 )
-@       IN  NS      ct00.homelab.cu.
-@       IN  A       192.168.56.10
-@       IN  MX 10   ct00.homelab.cu.
-ct00    IN  A       192.168.56.10
-
+@           IN  NS      ct00.homelab.cu.
+@           IN  A       192.168.56.10
+@           IN  MX 10   ct00.homelab.cu.
+;
+laptop      IN  A       192.168.56.1
+debian      IN  CNAME   laptop
+security    IN  CNAME   laptop
+multimedia  IN  CNAME   laptop
+proxmox     IN  CNAME   laptop
+;
+ct00        IN  A       192.168.56.10
+ns          IN  CNAME   ct00
+;
+ct01        IN  A       192.168.56.11
+dokuwiki    IN  CNAME   ct01
+;

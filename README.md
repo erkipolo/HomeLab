@@ -28,6 +28,13 @@
 ## E-mail Notification
 - ### admin@homelab.cu
 
+## Generating the user non-root password
+- ### `apt install whois`
+- ### `mkpasswd --method=sha-512`
+
+## Generating the dokuwiki user password
+- ### `htpasswd -bnBC 10 "" YOUR_PASSWORD | tr -d ':\n'`
+
 ## VirtualBox:
   - ### Ethernet
     - ### `eth0 = OnlyHost`
@@ -56,7 +63,10 @@
     - ### `ansible-playbook --syntax-check stage.yml`
     - ### `ansible-playbook --list-tags stage.yml`
     - ### `ansible-playbook [-l hostname] [-t 'upgrade'] stage.yml`
-  - ### Files require by some roles
+  - ### Deployments
+    - ### `DNS External`
+    - ### `Dokuwiki`
+  - ### Files require by some deployments
     - ### Nextcloud
       - ### [nextcloud-32.0.2.zip](https://download.nextcloud.com/server/releases/nextcloud-32.0.2.zip)
       - ### [calendar-v5.5.15.tar.gz](https://github.com/nextcloud-releases/calendar/releases/download/v5.5.15/calendar-v5.5.15.tar.gz)

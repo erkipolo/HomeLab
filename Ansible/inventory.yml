@@ -3,12 +3,14 @@ all:
   hosts:
     pve:  # Proxmox Virtual Enviroment
       ansible_host: 192.168.56.9
-    ct00: # CT without internet
+    ct00: # CT without internet ( DNS External )
       ansible_host: 192.168.56.10
-    ct01: # CT with internet
+    ct01: # CT without internet ( Dokuwiki )
       ansible_host: 192.168.56.11
-    ct02: # CT nextcloud without internet
+    ct02: # CT with internet
       ansible_host: 192.168.56.12
+    ct03: # CT nextcloud without internet
+      ansible_host: 192.168.56.13
     vm00: # VM without internet
       ansible_host: 192.168.56.20
     vm01: # VM with internet
@@ -38,6 +40,7 @@ all:
             debian_repositories_security: 'security.homelab.cu'
           hosts:
             ct00:
+            ct01:
           children:
             pveselfhosted:
               vars:
@@ -77,6 +80,14 @@ all:
                 WEB_CIDR_2: '0.0.0.0/0'
                 WEB_CIDR_3: '0.0.0.0/0'
               hosts:
+              children:
+                dokuwiki:
+                  vars:
+                    DOKUWIKI_USER: 'admin'
+                    DOKUWIKI_PASS: '~/.ssh/homelab_dokuwiki_user_pass.txt'
+                    DOKUWIKI_HOST_ALIAS: 'dokuwiki'
+                  hosts:
+                    ct01:
             database:
               vars:
               hosts:
@@ -86,7 +97,6 @@ all:
                 WEB_CIDR_2: '0.0.0.0/0'
                 WEB_CIDR_3: '0.0.0.0/0'
               hosts:
-                ct00:
               children:
                 nextcloud:
                   vars:

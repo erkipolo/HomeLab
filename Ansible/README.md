@@ -17,8 +17,9 @@
 [secure]
   ssh-secure                              # secure service ssh
   web-secure                              # secure service web
-[configurations]
-  dns-edge                                # configuration dns external
+[deployments]
+  dns-edge                                # dns external
+  dokuwiki                                # dokuwiki
 [firewall]
   iptables-enable                         # Installing firewall via iptables
   iptables-ssh                            # add firewall rules for service ssh

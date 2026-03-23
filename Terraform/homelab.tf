@@ -2,9 +2,9 @@ resource "proxmox_lxc" "ct00" {
   cores           = 1
   cpulimit        = 0
   cpuunits        = 100
-  hostname        = "ct00"
+  hostname        = "dns"
   memory          = 1024
-  nameserver      = "127.0.0.1"
+  nameserver      = "192.168.56.10"
   onboot          = true
   ostemplate      = "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
   ssh_public_keys = var.ct_ssh_public_key
@@ -33,6 +33,37 @@ resource "proxmox_lxc" "ct01" {
   cores           = 1
   cpulimit        = 0
   cpuunits        = 100
+  hostname        = "dokuwiki"
+  memory          = 1024
+  nameserver      = "192.168.56.10"
+  onboot          = true
+  ostemplate      = "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
+  ssh_public_keys = var.ct_ssh_public_key
+  searchdomain    = "homelab.cu"
+  start           = true
+  swap            = 1024
+  target_node     = "pve"
+  unprivileged    = true
+  vmid            = 701
+  features {
+    nesting = true
+  }
+  network {
+    bridge   = "vmbr0"
+    firewall = true
+    ip       = "192.168.56.11/24"
+    name     = "eth0"
+  }
+  rootfs {
+    size    = "32G"
+    storage = "local-lvm"
+  }
+}
+
+resource "proxmox_lxc" "ct10" {
+  cores           = 1
+  cpulimit        = 0
+  cpuunits        = 100
   hostname        = "ct01"
   memory          = 1024
   nameserver      = "127.0.0.1"
@@ -44,7 +75,7 @@ resource "proxmox_lxc" "ct01" {
   swap            = 1024
   target_node     = "pve"
   unprivileged    = true
-  vmid            = 701
+  vmid            = 710
   features {
     nesting = true
   }
@@ -66,7 +97,7 @@ resource "proxmox_lxc" "ct01" {
   }
 }
 
-resource "proxmox_lxc" "ct02" {
+resource "proxmox_lxc" "ct20" {
   cores           = 2
   cpulimit        = 0
   cpuunits        = 100
@@ -81,7 +112,7 @@ resource "proxmox_lxc" "ct02" {
   swap            = 2048
   target_node     = "pve"
   unprivileged    = true
-  vmid            = 702
+  vmid            = 720
   features {
     nesting = true
   }

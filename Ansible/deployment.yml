@@ -322,7 +322,13 @@
   hosts:
     - debian
   tasks:
-    - name: admin tools install
+    - name: remove nano text editor
+      ansible.builtin.apt:
+        name:
+          - nano
+        state: absent
+
+    - name: install admin tools
       ansible.builtin.apt:
         name:
           - tmux
@@ -1443,7 +1449,7 @@
         state: restarted
 
 #####################################################
-#               DNS EDGE for SERVICE                #
+#                DNS EDGE DEPLOYMENT                #
 #####################################################
 
 - name: debian server dns edge configuration
@@ -1517,6 +1523,96 @@
     - name: restart_bind9
       ansible.builtin.systemd_service:
         name: bind9
+        masked: no
+        enabled: true
+        state: restarted
+
+#####################################################
+#               DOKUWIKI DEPLOYMENT                 #
+#####################################################
+
+- name: debian server dokuwiki install
+  tags: dokuwiki
+  hosts:
+    - dokuwiki
+  tasks:
+    - name: Install dokuwiki
+      ansible.builtin.apt:
+        name:
+          - dokuwiki
+          - dokuwiki-plugins-extra
+          - dokuwiki-templates-extra
+        state: latest
+        update_cache: yes
+
+    - name: Allow access from all
+      ansible.builtin.lineinfile:
+        dest: /etc/dokuwiki/apache.conf
+        regexp: 'Allow from localhost 127\.0\.0\.1 \:\:1'
+        line: 'Allow from all'
+      notify: restart_apache
+
+    - name: Set Dokuwiki configuration permissions
+      ansible.builtin.file:
+        path: "/var/lib/dokuwiki/lib/{{ item }}"
+        # state: directory
+        mode: "0775"
+        owner: "root"
+        group: "www-data"
+        recurse: yes
+      with_items:
+        - plugins/
+        - tpl
+      notify: restart_apache
+
+    - name: Add Dokuwiki Administrator user
+      ansible.builtin.copy:
+        dest: /var/lib/dokuwiki/acl/users.auth.php
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          {{ DOKUWIKI_USER }}:{{ lookup('file', DOKUWIKI_PASS) }}:DokuWiki Administrator:{{ EMAIL_NOTIFICATION}}:admin,user
+      notify: restart_apache
+
+    - name: Create nextcloud site configuration
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/dokuwiki.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:443>
+            ServerName    {{ ansible_fqdn }}
+            ServerAlias   {{ DOKUWIKI_HOST_ALIAS }}.{{ ansible_domain }}
+            DocumentRoot  "/usr/share/dokuwiki"
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}/access.log combined
+            SSLEngine on
+            SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
+            SSLCertificateKeyFile   /etc/ssl/private/ssl-cert-snakeoil.key
+            <FilesMatch "\.(?:cgi|shtml|phtml|php)$">
+                    SSLOptions +StdEnvVars
+            </FilesMatch>
+            <Directory /usr/lib/cgi-bin>
+                    SSLOptions +StdEnvVars
+            </Directory>
+            DirectoryIndex index.php
+            Include conf-enabled/dokuwiki.conf
+          </VirtualHost>
+      notify: restart_apache
+
+    - name: Enable dokuwiki SSL site
+      ansible.builtin.file:
+        src: /etc/apache2/sites-available/dokuwiki.conf
+        dest: /etc/apache2/sites-enabled/dokuwiki.conf
+        state: link
+      notify: restart_apache
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
         masked: no
         enabled: true
         state: restarted
@@ -2156,9 +2252,7 @@
 
 
 
-
-
-
+#### EN PRUEBAS
 
 - name: debian server nextcloud install
   tags: nextcloud
