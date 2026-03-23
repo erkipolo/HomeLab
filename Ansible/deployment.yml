@@ -284,26 +284,26 @@
   hosts:
     - debian
   tasks:
-    - name: Install localisation for spanish
+    - name: Install spanish language
       ansible.builtin.apt:
         name:
           - task-spanish
         state: latest
         update_cache: yes
 
-    - name: Ensure localisation files are available
+    - name: Ensure spanish language files are available
       ansible.builtin.locale_gen:
         name:
           - es_ES.UTF-8
         state: present
 
-    - name: Enable spanish localisation short
+    - name: Enable spanish language short
       ansible.builtin.lineinfile:
         dest: /etc/default/locale
         regexp: "^LANG="
         line: 'LANG=es_ES.UTF-8'
 
-    - name: Enable spanish localisation large
+    - name: Enable spanish language large
       ansible.builtin.lineinfile:
         dest: /etc/default/locale
         regexp: "^LANGUAGE="
