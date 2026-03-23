@@ -5,6 +5,9 @@
   - ### server
     - ### dns
       - ### edge
+	- ### web
+	  - ### dokuwiki
+	- ### database
     - ### lamp
       - ### nextcloud
 
