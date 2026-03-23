@@ -33,7 +33,7 @@ resource "proxmox_lxc" "ct01" {
   cores           = 1
   cpulimit        = 0
   cpuunits        = 100
-  hostname        = "dokuwiki"
+  hostname        = "wiki"
   memory          = 1024
   nameserver      = "192.168.56.10"
   onboot          = true

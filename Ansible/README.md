@@ -1,3 +1,8 @@
+## **Note: to supress any lock do**
+1. `ansible all -m ping -l 'pve,ct00,ct01'`
+2. `ansible-playbook -l 'pve,ct00,ct01' -t 'repositories,upgrade,sudo-user' stage.yml`
+3. `ansible-playbook stage.yml`
+
 ## **Execution Order**
 ### **Basic**
 1. **kernel:**`setting kernel security configuration`
