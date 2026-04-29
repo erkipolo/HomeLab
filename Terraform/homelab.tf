@@ -64,7 +64,7 @@ resource "proxmox_lxc" "ct10" {
   cores           = 1
   cpulimit        = 0
   cpuunits        = 100
-  hostname        = "ct01"
+  hostname        = "ct10"
   memory          = 1024
   nameserver      = "127.0.0.1"
   onboot          = true
@@ -88,7 +88,7 @@ resource "proxmox_lxc" "ct10" {
   network {
     bridge   = "vmbr0"
     firewall = true
-    ip       = "192.168.56.11/24"
+    ip       = "192.168.56.12/24"
     name     = "eth1"
   }
   rootfs {

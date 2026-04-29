@@ -693,6 +693,44 @@
         state: restarted
 
 #####################################################
+# DOCKER IO #
+#####################################################
+
+- name: debian docker engine install
+  tags: docker-enable
+  hosts:
+    - docker
+  tasks:
+    - name: Install Docker.io
+      ansible.builtin.apt:
+        name:
+          - docker.io
+        state: latest
+        update_cache: yes
+
+
+#####################################################
+# DOCKER IMAGE DOWNLOAD #
+#####################################################
+
+- name: debian docker image download for postfix (send-only)
+  tags: docker-sendonly
+  hosts:
+    - docker
+  tasks:
+    - name: Download docker container image for debian
+      ansible.builtin.docker_image:
+        name: "debian:latest"
+        source: pull
+
+    - name: Start docker container image for debian
+      ansible.builtin.docker_container:
+        name: "base"
+        image: "debian:latest"
+        state: started
+        restart: true
+
+#####################################################
 #          DOMAIN NAME SYSTEM for SERVICE           #
 #####################################################
 

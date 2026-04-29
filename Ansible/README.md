@@ -17,10 +17,11 @@
 2. **upgrade-unattended-enable:**`enable service for unattended upgrades`
 3. **monit-enable:**`enable service for monitoring resources via monit`
 4. **snmp-enable:**`enable service for monitoring resources via snmp`
-5. **dns-enable:**`enable service for dns via bind9`
-6. **web-enable:**`enable service for web via apache2`
-7. **database-enable:**`enable service for database via mariadb`
-8. **lamp-stack:**`stack (L)inux (A)pache (M)ariadb (P)hp`
+5. **docker-enable:**`enable service for docker image`
+6. **dns-enable:**`enable service for dns via bind9`
+7. **web-enable:**`enable service for web via apache2`
+8. **database-enable:**`enable service for database via mariadb`
+9. **lamp-stack:**`stack (L)inux (A)pache (M)ariadb (P)hp`
 
 ### **Secure**
 1. **ssh-secure:**`secure service ssh`

@@ -7,7 +7,7 @@ all:
       ansible_host: 192.168.56.10
     ct01: # CT without internet ( Dokuwiki )
       ansible_host: 192.168.56.11
-    ct02: # CT with internet
+    ct10: # CT with internet (Docker)
       ansible_host: 192.168.56.12
     ct03: # CT nextcloud without internet
       ansible_host: 192.168.56.13
@@ -41,6 +41,7 @@ all:
           hosts:
             ct00:
             ct01:
+            ct10:
           children:
             pveselfhosted:
               vars:
@@ -60,6 +61,10 @@ all:
             SNMP_CIDR_3: '192.168.56.1/32'
           hosts:
           children:
+            docker:
+              vars:
+              hosts:
+                ct10:
             dns:
               vars:
                 DNS_CIDR_1: '0.0.0.0/0'
