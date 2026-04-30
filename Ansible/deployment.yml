@@ -701,7 +701,7 @@
   hosts:
     - docker
   tasks:
-    - name: Install Docker.io
+    - name: Install Docker.io and Docker Compose
       ansible.builtin.apt:
         name:
           - docker.io
