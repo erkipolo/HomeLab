@@ -701,13 +701,12 @@
   hosts:
     - docker
   tasks:
-    - name: Install Docker.io and Docker Compose
+    - name: Install Docker and Compose
       ansible.builtin.apt:
         name:
           - docker.io
         state: latest
         update_cache: yes
-
 
 #####################################################
 # DOCKER IMAGE DOWNLOAD #
