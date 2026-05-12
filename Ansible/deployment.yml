@@ -332,6 +332,7 @@
       ansible.builtin.apt:
         name:
           - tmux
+          - lynis
           - vim-tiny
           - bash-completion
         state: latest
