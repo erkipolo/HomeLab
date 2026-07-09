@@ -15,6 +15,8 @@ all:
       ansible_host: 192.168.56.20
     vm01: # VM with internet
       ansible_host: 192.168.56.21
+    incus00: # CT with internet
+      ansible_host: 10.245.77.104
   children:
     debian:
       vars:
@@ -34,14 +36,15 @@ all:
             pve:
         debselfhosted:
           vars:
-            debian_self_hosted_find:      '^192\.168\.56\.1 deb'
-            debian_self_hosted_hosts:     '192.168.56.1 debian.homelab.cu security.homelab.cu'
+            debian_self_hosted_find:      '^10\.245\.77\.1 deb'
+            debian_self_hosted_hosts:     '10.245.77.1 debian.homelab.cu security.homelab.cu'
             debian_repositories_main:     'debian.homelab.cu'
             debian_repositories_security: 'security.homelab.cu'
           hosts:
             ct00:
             ct01:
             ct10:
+            incus00:
           children:
             pveselfhosted:
               vars:
@@ -53,13 +56,14 @@ all:
         server:
           vars:
             EMAIL_NOTIFICATION: 'admin@homelab.cu'
-            SSH_CIDR_1: '192.168.56.1/32'
-            SSH_CIDR_2: '192.168.56.1/32'
-            SSH_CIDR_3: '192.168.56.1/32'
-            SNMP_CIDR_1: '192.168.56.1/32'
-            SNMP_CIDR_2: '192.168.56.1/32'
-            SNMP_CIDR_3: '192.168.56.1/32'
+            SSH_CIDR_1: '0.0.0.0/0'
+            SSH_CIDR_2: '0.0.0.0/0'
+            SSH_CIDR_3: '0.0.0.0/0'
+            SNMP_CIDR_1: '0.0.0.0/0'
+            SNMP_CIDR_2: '0.0.0.0/0'
+            SNMP_CIDR_3: '0.0.0.0/0'
           hosts:
+            incus00:
           children:
             docker:
               vars:
@@ -85,6 +89,7 @@ all:
                 WEB_CIDR_2: '0.0.0.0/0'
                 WEB_CIDR_3: '0.0.0.0/0'
               hosts:
+                incus00:
               children:
                 dokuwiki:
                   vars:
@@ -102,6 +107,7 @@ all:
                 WEB_CIDR_2: '0.0.0.0/0'
                 WEB_CIDR_3: '0.0.0.0/0'
               hosts:
+                incus00:
               children:
                 nextcloud:
                   vars:
