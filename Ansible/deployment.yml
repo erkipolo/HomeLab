@@ -1570,6 +1570,94 @@
         enabled: true
         state: restarted
 
+
+#####################################################
+#               DOKUWIKI DEPLOYMENT                 #
+#####################################################
+
+- name: debian server lightsquid install
+  tags: lightsquid
+  hosts:
+    - lightsquid
+  tasks:
+    - name: Install LightSquid
+      ansible.builtin.apt:
+        name:
+          - lightsquid
+          - libcgi-fast-perl
+        state: latest
+        update_cache: yes
+
+    - name: Setting LightSquid log path
+      ansible.builtin.lineinfile:
+        dest: /etc/lightsquid/lightsquid.cfg
+        regexp: '^$logpath'
+        line: '$logpath = "/var/log/squid";'
+      notify: restart_apache
+
+#    - name: Setting LightSquid Date Stop
+#      ansible.builtin.lineinfile:
+#        dest: /usr/share/lightsquid/lightparser.pl
+#        regexp: '^my $filterdatestop'
+#        line: 'my $filterdatestop =timelocal(59,59,23,31,12-1,2100-1900)+1000;'
+#      notify: restart_apache
+
+    - name: Enable apache modules for LightSquid
+      ansible.builtin.file:
+        src: /etc/apache2/mods-available/{{ item }}
+        dest: /etc/apache2/mods-enabled/{{ item }}
+        state: link
+      loop:
+         - cgid.load
+         - cgid.conf
+      notify: restart_apache
+
+    - name: Create LightSquid site configuration
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/lightsquid.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:443>
+            ServerName    {{ ansible_fqdn }}
+            ServerAlias   {{ LightSquid_HOST_ALIAS }}.{{ ansible_domain }}
+            DocumentRoot /usr/lib/cgi-bin/lightsquid/
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}/access.log combined
+            SSLEngine on
+            SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
+            SSLCertificateKeyFile   /etc/ssl/private/ssl-cert-snakeoil.key
+            <FilesMatch "\.(?:cgi|shtml|phtml|php)$">
+                    SSLOptions +StdEnvVars
+            </FilesMatch>
+            <Directory /usr/lib/cgi-bin>
+                    SSLOptions +StdEnvVars
+            </Directory>
+            <Directory "/usr/lib/cgi-bin/lightsquid/">
+              Options +ExecCGI
+              AddHandler cgi-script .cgi .pl
+              DirectoryIndex index.cgi index.pl
+              Require all granted
+            </Directory>
+          </VirtualHost>
+      notify: restart_apache
+
+    - name: Enable LightSquid SSL site
+      ansible.builtin.file:
+        src: /etc/apache2/sites-available/lightsquid.conf
+        dest: /etc/apache2/sites-enabled/lightsquid.conf
+        state: link
+      notify: restart_apache
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
 #####################################################
 #               DOKUWIKI DEPLOYMENT                 #
 #####################################################
@@ -1579,7 +1667,7 @@
   hosts:
     - dokuwiki
   tasks:
-    - name: Install dokuwiki
+    - name: Install Dokuwiki
       ansible.builtin.apt:
         name:
           - dokuwiki
@@ -1618,7 +1706,7 @@
           {{ DOKUWIKI_USER }}:{{ lookup('file', DOKUWIKI_PASS) }}:DokuWiki Administrator:{{ EMAIL_NOTIFICATION}}:admin,user
       notify: restart_apache
 
-    - name: Create nextcloud site configuration
+    - name: Create Dokuwiki site configuration
       ansible.builtin.copy:
         dest: /etc/apache2/sites-available/dokuwiki.conf
         owner: root
@@ -1645,7 +1733,7 @@
           </VirtualHost>
       notify: restart_apache
 
-    - name: Enable dokuwiki SSL site
+    - name: Enable Dokuwiki SSL site
       ansible.builtin.file:
         src: /etc/apache2/sites-available/dokuwiki.conf
         dest: /etc/apache2/sites-enabled/dokuwiki.conf

@@ -17,6 +17,8 @@ all:
       ansible_host: 192.168.56.21
     incus00: # CT with internet
       ansible_host: 10.245.77.104
+    trazas: # CT with internet
+      ansible_host: 10.245.77.128
   children:
     debian:
       vars:
@@ -45,6 +47,7 @@ all:
             ct01:
             ct10:
             incus00:
+            trazas:
           children:
             pveselfhosted:
               vars:
@@ -64,6 +67,7 @@ all:
             SNMP_CIDR_3: '0.0.0.0/0'
           hosts:
             incus00:
+            trazas:
           children:
             docker:
               vars:
@@ -90,7 +94,13 @@ all:
                 WEB_CIDR_3: '0.0.0.0/0'
               hosts:
                 incus00:
+                trazas:
               children:
+                lightsquid:
+                  vars:
+                    LightSquid_HOST_ALIAS: 'navstat'
+                  hosts:
+                    trazas:
                 dokuwiki:
                   vars:
                     DOKUWIKI_USER: 'admin'
