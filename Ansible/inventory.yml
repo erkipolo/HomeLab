@@ -19,6 +19,8 @@ all:
       ansible_host: 10.245.77.104
     trazas: # CT with internet
       ansible_host: 10.245.77.128
+    condor: # CT with internet
+      ansible_host: 10.245.77.203
   children:
     debian:
       vars:
@@ -48,6 +50,7 @@ all:
             ct10:
             incus00:
             trazas:
+            condor:
           children:
             pveselfhosted:
               vars:
@@ -68,7 +71,12 @@ all:
           hosts:
             incus00:
             trazas:
+            condor:
           children:
+            mssql:
+              vars:
+              hosts:
+                condor:
             docker:
               vars:
               hosts:
@@ -108,7 +116,7 @@ all:
                     DOKUWIKI_HOST_ALIAS: 'dokuwiki'
                   hosts:
                     ct01:
-            database:
+            mariadb:
               vars:
               hosts:
             lamp:

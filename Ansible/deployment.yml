@@ -861,14 +861,43 @@
           }
 
 #####################################################
+#         DATABASE for SERVICE via MS SQL SERVER    #
+#####################################################
+
+- name: debian server mssql install
+  tags: mssql-enable
+  hosts:
+    - mssql
+  tasks:
+    - name: Add MSSQL main repositories
+      ansible.builtin.deb822_repository:
+        name: msmssql-server-2025sql
+        types: deb
+        uris: "https://packages.microsoft.com/ubuntu/24.04/mssql-server-2025"
+        suites:
+          - noble
+        components:
+          - main
+        architectures: amd64
+        signed_by: https://packages.microsoft.com/keys/microsoft.asc
+        state: present
+
+    - name: Install MSSQL
+      ansible.builtin.apt:
+        name:
+          - mssql-server
+        state: latest
+        update_cache: yes
+
+#####################################################
 #         DATABASE for SERVICE via MARIADB          #
 #####################################################
 
 - name: debian server mariadb install
-  tags: database-enable, lamp-stack
+  tags: mariadb-enable, lamp-stack
   hosts:
     - lamp
-    - database
+    - mariadb
   tasks:
     - name: Install MariaDB
       ansible.builtin.apt:
@@ -2451,12 +2480,12 @@
          - /tmp/nextcloud.tar.gz
          - /tmp/nextcloud
 
-    - name: Create nextcloud database
+    - name: Create nextcloud mariadb
       ansible.builtin.mysql_db:
         name: "nextcloud"
         state: present
 
-    - name: Create nextcloud user for nextcloud database
+    - name: Create nextcloud user for nextcloud mariadb
       ansible.builtin.mysql_user:
         name: "{{ NEXTCLOUD_DATABASE_USER }}"
         password: '{{ NEXTCLOUD_DATABASE_PASS }}'
@@ -2560,7 +2589,7 @@
       notify: restart_apache
       when: file_check.stat.exists == false
 
-    - name: Fix missing indices on nextcloud database with OCC
+    - name: Fix missing indices on nextcloud mariadb with OCC
       ansible.builtin.shell: |
         sudo -u www-data \
           php /var/www/nextcloud/occ \
@@ -3055,12 +3084,12 @@
         state: latest
         update_cache: yes
 
-    - name: Create wordpress database
+    - name: Create wordpress mariadb
       ansible.builtin.mysql_db:
         name: "wordpress"
         state: present
 
-    - name: Create wordpress user for wordpress database
+    - name: Create wordpress user for wordpress mariadb
       ansible.builtin.mysql_user:
         name: "{{ WORDPRESS_DATABASE_USER }}"
         password: '{{ WORDPRESS_DATABASE_PASS }}'
@@ -3068,7 +3097,7 @@
         host: 'localhost'
         state: present
 
-    - name: Setting database for wordpress
+    - name: Setting mariadb for wordpress
       ansible.builtin.copy:
         dest: /etc/wordpress/config-default.php
         owner: root
@@ -3155,13 +3184,13 @@
         state: latest
         update_cache: yes
 
-    - name: Create zabbix database
+    - name: Create zabbix mariadb
       ansible.builtin.mysql_db:
         name: "zabbix"
         state: present
       notify: import_schema
 
-    - name: Create zabbix user for zabbix database
+    - name: Create zabbix user for zabbix mariadb
       ansible.builtin.mysql_user:
         name: "{{ ZABBIX_DATABASE_USER }}"
         password: '{{ ZABBIX_DATABASE_PASS }}'
@@ -3169,14 +3198,14 @@
         host: 'localhost'
         state: present
 
-    - name: Setting database user
+    - name: Setting mariadb user
       ansible.builtin.lineinfile:
         dest: /etc/zabbix/zabbix_server.conf
         regexp: "^DBUser="
         line: 'DBUser={{ ZABBIX_DATABASE_USER }}'
       notify: restart_zabbix
 
-    - name: Setting database password
+    - name: Setting mariadb password
       ansible.builtin.lineinfile:
         dest: /etc/zabbix/zabbix_server.conf
         regexp: "^# DBPassword="
