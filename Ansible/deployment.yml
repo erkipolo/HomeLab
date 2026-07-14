@@ -871,7 +871,7 @@
   tasks:
     - name: Add MSSQL main repositories
       ansible.builtin.deb822_repository:
-        name: msmssql-server-2025sql
+        name: mssql-server-2025sql
         types: deb
         uris: "https://packages.microsoft.com/ubuntu/24.04/mssql-server-2025"
         suites:
