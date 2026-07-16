@@ -820,6 +820,7 @@
 - name: debian server apache install
   tags: web-enable, lamp-stack
   hosts:
+    - lamp_stack
     - lamp
     - web
   tasks:
@@ -896,6 +897,7 @@
 - name: debian server mariadb install
   tags: mariadb-enable, lamp-stack
   hosts:
+    - lamp_stack
     - lamp
     - mariadb
   tasks:
@@ -989,6 +991,7 @@
 - name: debian server php install
   tags: lamp-stack
   hosts:
+    - lamp_stack
     - lamp
   tasks:
     - name: Install PHP version fpm
@@ -1032,8 +1035,9 @@
         state: restarted
 
 - name: debian server php install apache support
-  tags: lamp
+  tags: lamp, lamp-stack
   hosts:
+    - lamp_stack
     - lamp
   tasks:
     - name: Install PHP support for Apache
@@ -1052,8 +1056,9 @@
         state: restarted
 
 - name: debian server php install mariadb support
-  tags: lamp
+  tags: lamp, lamp-stack
   hosts:
+    - lamp_stack
     - lamp
   tasks:
     - name: Install MariaDB support for PHP
@@ -1072,8 +1077,9 @@
         state: restarted
 
 - name: debian server php common dependencies
-  tags: lamp
+  tags: lamp, lamp-stack
   hosts:
+    - lamp_stack
     - lamp
   tasks:
     - name: Install PHP common dependencies
@@ -1275,8 +1281,9 @@
 #####################################################
 
 - name: debian server apache security module
-  tags: web-secure
+  tags: web-secure, lamp-stack
   hosts:
+    - lamp_stack
     - lamp
     - web
   tasks:
@@ -1599,9 +1606,8 @@
         enabled: true
         state: restarted
 
-
 #####################################################
-#               DOKUWIKI DEPLOYMENT                 #
+#               LightSquid DEPLOYMENT                 #
 #####################################################
 
 - name: debian server lightsquid install
@@ -1676,6 +1682,133 @@
       ansible.builtin.file:
         src: /etc/apache2/sites-available/lightsquid.conf
         dest: /etc/apache2/sites-enabled/lightsquid.conf
+        state: link
+      notify: restart_apache
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+#####################################################
+#               DOKUWIKI DEPLOYMENT                 #
+#####################################################
+
+- name: debian server drupal install
+  tags: drupal
+  hosts:
+    - drupal
+  tasks:
+    - name: Check if Drupal archive are downloaded
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: /home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/drupal-11.4.4.tar.gz
+      register: file_check
+
+    - name: Download Drupal archive
+      delegate_to: localhost
+      get_url:
+        url: "https://ftp.drupal.org/files/projects/drupal-11.4.4.tar.gz"
+        dest: "/home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/drupal-11.4.4.tar.gz"
+        owner: "ppcojo"
+        group: "ppcojo"
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Check if Drupal are installed
+      ansible.builtin.stat:
+        path: /var/www/drupal/sites/default/settings.php
+      register: file_check
+
+    - name: Upload Drupal archive
+      ansible.builtin.copy:
+        src: drupal-11.4.4.tar.gz
+        dest: /tmp/drupal-11.4.4.tar.gz
+      when: file_check.stat.exists == false
+
+    - name: Extract Drupal archive
+      ansible.builtin.unarchive:
+        src: "/tmp/drupal-11.4.4.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+      when: file_check.stat.exists == false
+
+    - name: Copy Drupal folder to /var/www
+      ansible.builtin.copy:
+        src: /tmp/drupal-11.4.4/
+        dest: /var/www/drupal/
+        remote_src: true
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      when: file_check.stat.exists == false
+
+    - name: Removing temporal files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/drupal-11.4.4.tar.gz
+        - /tmp/drupal-11.4.4
+
+    - name: Create Drupal mariadb
+      ansible.builtin.mysql_db:
+        name: "drupal"
+        state: present
+
+    - name: Create Drupal user for Drupal mariadb
+      ansible.builtin.mysql_user:
+        name: "{{ DRUPAL_DATABASE_USER }}"
+        password: '{{ DRUPAL_DATABASE_PASS }}'
+        priv: "drupal.*:ALL"
+        host: 'localhost'
+        state: present
+
+    - name: Install Drupal PHP dependencies
+      ansible.builtin.apt:
+        name:
+          - php-gd
+        state: latest
+        update_cache: yes
+
+    - name: Create Drupal site configuration
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/drupal.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:443>
+            ServerName    {{ ansible_fqdn }}
+            ServerAlias   {{ DRUPAL_HOST_ALIAS }}.{{ ansible_domain }}
+            DocumentRoot  "/var/www/drupal/"
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}/access.log combined
+            SSLEngine on
+            SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
+            SSLCertificateKeyFile   /etc/ssl/private/ssl-cert-snakeoil.key
+            <FilesMatch "\.(?:cgi|shtml|phtml|php)$">
+                    SSLOptions +StdEnvVars
+            </FilesMatch>
+            <Directory /usr/lib/cgi-bin>
+                    SSLOptions +StdEnvVars
+            </Directory>
+            <Directory /var/www/drupal/>
+              Options Indexes FollowSymLinks
+              AllowOverride All
+              Require all granted
+            </Directory>
+            DirectoryIndex index.php
+          </VirtualHost>
+      notify: restart_apache
+
+    - name: Enable Drupal SSL site
+      ansible.builtin.file:
+        src: /etc/apache2/sites-available/drupal.conf
+        dest: /etc/apache2/sites-enabled/drupal.conf
         state: link
       notify: restart_apache
 
@@ -1974,6 +2107,7 @@
 - name: debian server firewall add http(s) access rules
   tags: iptables-web, lamp-stack
   hosts:
+    - lamp_stack
     - lamp
     - web
   tasks:
@@ -2195,7 +2329,7 @@
 #        HIPS WEB SUPERVISION for SECURITY         #
 ####################################################
 
-- name: debian hips dns supervision
+- name: debian hips web supervision
   tags: hips-web
   hosts:
     - lamp
@@ -2277,6 +2411,32 @@
       ansible.builtin.replace:
         path: /etc/fail2ban/jail.local
         regexp: '^(\[apache-shellshock\])(?!\n{{data}})'
+        replace: '\1\n{{data}}'
+      vars:
+        data: 'enabled = true'
+      notify: restart_fail2ban
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        masked: no
+        enabled: true
+        state: restarted
+
+####################################################
+#        HIPS DRUPAL SUPERVISION for SECURITY      #
+####################################################
+
+- name: debian hips Drupal supervision
+  tags: hips-drupal
+  hosts:
+    - drupal
+  tasks:
+    - name: Enable auth supervision
+      ansible.builtin.replace:
+        path: /etc/fail2ban/jail.local
+        regexp: '^(\[drupal-auth\])(?!\n{{data}})'
         replace: '\1\n{{data}}'
       vars:
         data: 'enabled = true'
@@ -2396,23 +2556,9 @@
         enabled: true
         state: restarted
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#### EN PRUEBAS
+####################################################
+#              NEXTCLOUD DEPLOYMENT                #
+####################################################
 
 - name: debian server nextcloud install
   tags: nextcloud
@@ -2422,16 +2568,16 @@
     - name: Check if NextCloud archive are downloaded
       delegate_to: localhost
       ansible.builtin.stat:
-        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/nextcloud-32.0.2.tar.gz
+        path: /home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/nextcloud-32.0.2.tar.gz
       register: file_check
 
     - name: Download NextCloud archive
       delegate_to: localhost
       get_url:
         url: "https://download.nextcloud.com/server/releases/nextcloud-32.0.2.tar.gz"
-        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/nextcloud-32.0.2.tar.gz"
-        owner: "sysadmin"
-        group: "sysadmin"
+        dest: "/home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/nextcloud-32.0.2.tar.gz"
+        owner: "ppcojo"
+        group: "ppcojo"
         mode: '0755'
       when: file_check.stat.exists == false
 
@@ -2636,16 +2782,16 @@
     - name: Check if Calendar archive are downloaded
       delegate_to: localhost
       ansible.builtin.stat:
-        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/calendar-v5.5.15.tar.gz
+        path: /home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/calendar-v5.5.15.tar.gz
       register: file_check
 
     - name: Download Calendar archive
       delegate_to: localhost
       get_url:
         url: "https://github.com/nextcloud-releases/calendar/releases/download/v5.5.15/calendar-v5.5.15.tar.gz"
-        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/calendar-v5.5.15.tar.gz"
-        owner: "sysadmin"
-        group: "sysadmin"
+        dest: "/home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/calendar-v5.5.15.tar.gz"
+        owner: "ppcojo"
+        group: "ppcojo"
         mode: '0755'
       when: file_check.stat.exists == false
 
@@ -2704,16 +2850,16 @@
     - name: Check if Contacts archive are downloaded
       delegate_to: localhost
       ansible.builtin.stat:
-        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/contacts-v7.3.16.tar.gz
+        path: /home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/contacts-v7.3.16.tar.gz
       register: file_check
 
     - name: Download Contacts archive
       delegate_to: localhost
       get_url:
         url: "https://github.com/nextcloud-releases/contacts/releases/download/v7.3.16/contacts-v7.3.16.tar.gz"
-        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/contacts-v7.3.16.tar.gz"
-        owner: "sysadmin"
-        group: "sysadmin"
+        dest: "/home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/contacts-v7.3.16.tar.gz"
+        owner: "ppcojo"
+        group: "ppcojo"
         mode: '0755'
       when: file_check.stat.exists == false
 
@@ -2772,16 +2918,16 @@
     - name: Check if Mail archive are downloaded
       delegate_to: localhost
       ansible.builtin.stat:
-        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/mail-v5.7.1.tar.gz
+        path: /home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/mail-v5.7.1.tar.gz
       register: file_check
 
     - name: Download Mail archive
       delegate_to: localhost
       get_url:
         url: "https://github.com/nextcloud-releases/mail/releases/download/v5.7.1/mail-v5.7.1.tar.gz"
-        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/mail-v5.7.1.tar.gz"
-        owner: "sysadmin"
-        group: "sysadmin"
+        dest: "/home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/mail-v5.7.1.tar.gz"
+        owner: "ppcojo"
+        group: "ppcojo"
         mode: '0755'
       when: file_check.stat.exists == false
 
@@ -2840,16 +2986,16 @@
     - name: Check if Document Server Community archive are downloaded
       delegate_to: localhost
       ansible.builtin.stat:
-        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz
+        path: /home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz
       register: file_check
 
     - name: Download Document Server Community archive
       delegate_to: localhost
       get_url:
         url: "https://github.com/chadek/documentserver_community/releases/download/v0.2.1/documentserver_community.tar.gz"
-        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz"
-        owner: "sysadmin"
-        group: "sysadmin"
+        dest: "/home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/documentserver_community-0.2.1.tar.gz"
+        owner: "ppcojo"
+        group: "ppcojo"
         mode: '0755'
       when: file_check.stat.exists == false
 
@@ -2908,16 +3054,16 @@
     - name: Check if OnlyOffice archive are downloaded
       delegate_to: localhost
       ansible.builtin.stat:
-        path: /home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz
+        path: /home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz
       register: file_check
 
     - name: Download OnlyOffice archive
       delegate_to: localhost
       get_url:
         url: "https://github.com/ONLYOFFICE/onlyoffice-nextcloud/releases/download/v9.12.0/onlyoffice.tar.gz"
-        dest: "/home/sysadmin/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz"
-        owner: "sysadmin"
-        group: "sysadmin"
+        dest: "/home/ppcojo/Documentos/GitHub/HomeLab/Ansible/files/onlyoffice-9.12.0.tar.gz"
+        owner: "ppcojo"
+        group: "ppcojo"
         mode: '0755'
       when: file_check.stat.exists == false
 
@@ -3068,8 +3214,9 @@
         enabled: true
         state: restarted
 
-
-
+####################################################
+#              WORDPRESS DEPLOYMENT                #
+####################################################
 
 - name: debian server wordpress install
   tags: wordpress
@@ -3162,6 +3309,10 @@
         masked: no
         enabled: true
         state: restarted
+
+####################################################
+#                ZABBIX DEPLOYMENT                 #
+####################################################
 
 - name: debian server zabbix install
   tags: zabbix

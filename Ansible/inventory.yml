@@ -1,26 +1,8 @@
 all:
   vars:
   hosts:
-    pve:  # Proxmox Virtual Enviroment
-      ansible_host: 192.168.56.9
-    ct00: # CT without internet ( DNS External )
-      ansible_host: 192.168.56.10
-    ct01: # CT without internet ( Dokuwiki )
-      ansible_host: 192.168.56.11
-    ct10: # CT with internet (Docker)
-      ansible_host: 192.168.56.12
-    ct03: # CT nextcloud without internet
-      ansible_host: 192.168.56.13
-    vm00: # VM without internet
-      ansible_host: 192.168.56.20
-    vm01: # VM with internet
-      ansible_host: 192.168.56.21
-    incus00: # CT with internet
-      ansible_host: 10.245.77.104
-    trazas: # CT with internet
-      ansible_host: 10.245.77.128
-    condor: # CT with internet
-      ansible_host: 10.245.77.203
+    homepage: # CT with internet
+      ansible_host: 10.245.77.122
   children:
     debian:
       vars:
@@ -37,7 +19,6 @@ all:
           vars:
             proxmox_repositories:         'download.proxmox.com'
           hosts:
-            pve:
         debselfhosted:
           vars:
             debian_self_hosted_find:      '^10\.245\.77\.1 deb'
@@ -45,12 +26,7 @@ all:
             debian_repositories_main:     'debian.homelab.cu'
             debian_repositories_security: 'security.homelab.cu'
           hosts:
-            ct00:
-            ct01:
-            ct10:
-            incus00:
-            trazas:
-            condor:
+            homepage:
           children:
             pveselfhosted:
               vars:
@@ -58,7 +34,6 @@ all:
                 proxmox_self_hosted_hosts:  '192.168.56.1 proxmox.homelab.cu'
                 proxmox_repositories:       'proxmox.homelab.cu'
               hosts:
-                pve:
         server:
           vars:
             EMAIL_NOTIFICATION: 'admin@homelab.cu'
@@ -69,18 +44,10 @@ all:
             SNMP_CIDR_2: '0.0.0.0/0'
             SNMP_CIDR_3: '0.0.0.0/0'
           hosts:
-            incus00:
-            trazas:
-            condor:
           children:
-            mssql:
-              vars:
-              hosts:
-                condor:
             docker:
               vars:
               hosts:
-                ct10:
             dns:
               vars:
                 DNS_CIDR_1: '0.0.0.0/0'
@@ -94,30 +61,34 @@ all:
                     named_conf_external_zone_dir: 'named.conf.external-zone.dir'
                     named_conf_external_zone_inv: 'named.conf.external-zone.inv'
                   hosts:
-                    ct00:
+            mssql:
+              vars:
+              hosts:
+            mariadb:
+              vars:
+              hosts:
             web:
               vars:
                 WEB_CIDR_1: '0.0.0.0/0'
                 WEB_CIDR_2: '0.0.0.0/0'
                 WEB_CIDR_3: '0.0.0.0/0'
               hosts:
-                incus00:
-                trazas:
               children:
                 lightsquid:
                   vars:
                     LightSquid_HOST_ALIAS: 'navstat'
                   hosts:
-                    trazas:
                 dokuwiki:
                   vars:
                     DOKUWIKI_USER: 'admin'
                     DOKUWIKI_PASS: '~/.ssh/homelab_dokuwiki_user_pass.txt'
                     DOKUWIKI_HOST_ALIAS: 'dokuwiki'
                   hosts:
-                    ct01:
-            mariadb:
+            lamp_stack:
               vars:
+                WEB_CIDR_1: '0.0.0.0/0'
+                WEB_CIDR_2: '0.0.0.0/0'
+                WEB_CIDR_3: '0.0.0.0/0'
               hosts:
             lamp:
               vars:
@@ -125,8 +96,14 @@ all:
                 WEB_CIDR_2: '0.0.0.0/0'
                 WEB_CIDR_3: '0.0.0.0/0'
               hosts:
-                incus00:
               children:
+                drupal:
+                  vars:
+                    DRUPAL_HOST_ALIAS: 'drupal'
+                    DRUPAL_DATABASE_USER: 'drupal'
+                    DRUPAL_DATABASE_PASS: 'drupal'
+                  hosts:
+                    homepage:
                 nextcloud:
                   vars:
                     NEXTCLOUD_HOST_ALIAS: 'nextcloud'
