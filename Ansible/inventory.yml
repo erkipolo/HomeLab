@@ -2,7 +2,7 @@ all:
   vars:
   hosts:
     homepage: # CT with internet
-      ansible_host: 10.245.77.122
+      ansible_host: 10.245.77.8
   children:
     debian:
       vars:
