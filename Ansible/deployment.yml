@@ -1694,11 +1694,11 @@
         state: restarted
 
 #####################################################
-#               DOKUWIKI DEPLOYMENT                 #
+#                DRUPAL DEPLOYMENT                  #
 #####################################################
 
 - name: debian server drupal install
-  tags: drupal
+  tags: drupal-enable
   hosts:
     - drupal
   tasks:
@@ -1771,8 +1771,43 @@
       ansible.builtin.apt:
         name:
           - php-gd
+          - php-apcu
         state: latest
         update_cache: yes
+
+    - name: Enable CLI to PHP module APCU
+      ansible.builtin.lineinfile:
+        dest: /etc/php/8.4/mods-available/apcu.ini
+        regexp: '^apc.enable_cli='
+        line: "apc.enable_cli=1"
+      notify: restart_php
+
+    - name: Enable PHP module for fpm
+      ansible.builtin.file:
+        src: /etc/php/8.4/mods-available/{{ item }}.ini
+        dest: /etc/php/8.4/fpm/conf.d/20-{{ item }}.ini
+        state: link
+      loop:
+        - apcu
+      notify: restart_php
+
+    - name: Enable PHP module for apache
+      ansible.builtin.file:
+        src: /etc/php/8.4/mods-available/{{ item }}.ini
+        dest: /etc/php/8.4/apache2/conf.d/20-{{ item }}.ini
+        state: link
+      loop:
+        - apcu
+      notify: restart_php
+
+    - name: Enable PHP module for cli
+      ansible.builtin.file:
+        src: /etc/php/8.4/mods-available/{{ item }}.ini
+        dest: /etc/php/8.4/cli/conf.d/20-{{ item }}.ini
+        state: link
+      loop:
+        - apcu
+      notify: restart_php
 
     - name: Create Drupal site configuration
       ansible.builtin.copy:
@@ -1811,6 +1846,39 @@
         dest: /etc/apache2/sites-enabled/drupal.conf
         state: link
       notify: restart_apache
+
+  handlers:
+    - name: restart_apache
+      ansible.builtin.systemd_service:
+        name: apache2
+        masked: no
+        enabled: true
+        state: restarted
+
+    - name: restart_php
+      ansible.builtin.systemd_service:
+        name: php8.4-fpm
+        masked: no
+        enabled: true
+        state: restarted
+
+- name: debian server drupal secure
+  tags: drupal-secure
+  hosts:
+    - drupal_secure
+  tasks:
+    - name: Check if Drupal are installed and configured
+      ansible.builtin.stat:
+        path: /var/www/drupal/sites/default/settings.php
+      register: file_check
+
+    - name: Disable Drupal html5_validation
+      ansible.builtin.lineinfile:
+        dest: /var/www/drupal/sites/default/settings.php
+        regexp: "^$settings['enable_html5_validation'] = TRUE;"
+        line: "$settings['enable_html5_validation'] = FALSE;"
+      notify: restart_apache
+      when: file_check.stat.exists == true
 
   handlers:
     - name: restart_apache

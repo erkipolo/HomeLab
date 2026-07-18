@@ -2,7 +2,7 @@ all:
   vars:
   hosts:
     homepage: # CT with internet
-      ansible_host: 10.245.77.8
+      ansible_host: 10.245.77.67
   children:
     debian:
       vars:
@@ -102,6 +102,10 @@ all:
                     DRUPAL_HOST_ALIAS: 'drupal'
                     DRUPAL_DATABASE_USER: 'drupal'
                     DRUPAL_DATABASE_PASS: 'drupal'
+                  hosts:
+                    homepage:
+                drupal_secure:
+                  vars:
                   hosts:
                     homepage:
                 nextcloud:
