@@ -1,8 +1,8 @@
 all:
   vars:
   hosts:
-    homepage: # CT with internet
-      ansible_host: 10.245.77.67
+    testing: # CT with internet
+      ansible_host: 10.245.77.224
   children:
     debian:
       vars:
@@ -26,7 +26,7 @@ all:
             debian_repositories_main:     'debian.homelab.cu'
             debian_repositories_security: 'security.homelab.cu'
           hosts:
-            homepage:
+            testing:
           children:
             pveselfhosted:
               vars:
@@ -44,6 +44,7 @@ all:
             SNMP_CIDR_2: '0.0.0.0/0'
             SNMP_CIDR_3: '0.0.0.0/0'
           hosts:
+            testing:
           children:
             docker:
               vars:
@@ -103,11 +104,9 @@ all:
                     DRUPAL_DATABASE_USER: 'drupal'
                     DRUPAL_DATABASE_PASS: 'drupal'
                   hosts:
-                    homepage:
                 drupal_secure:
                   vars:
                   hosts:
-                    homepage:
                 nextcloud:
                   vars:
                     NEXTCLOUD_HOST_ALIAS: 'nextcloud'
