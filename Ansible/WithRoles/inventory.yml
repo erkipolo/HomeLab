@@ -36,6 +36,7 @@ all:
               hosts:
         server:
           vars:
+            FQDN_EMAIL_SERVER: 'smtp.gmail.com'
             EMAIL_NOTIFICATION: 'admin@homelab.cu'
             SSH_CIDR_1: '0.0.0.0/0'
             SSH_CIDR_2: '0.0.0.0/0'

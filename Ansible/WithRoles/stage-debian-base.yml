@@ -65,6 +65,7 @@
     - server
   roles:
     - notification-service-email-enable
+    - notification-service-email-auth
     - notification-service-upgrade-unattended
     - notification-service-hips
     - notification-service-monit
