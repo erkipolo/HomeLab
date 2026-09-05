@@ -1,0 +1,7 @@
+- name: restart_ssh
+  ansible.builtin.systemd_service:
+    name: ssh
+    masked: no
+    enabled: true
+    state: restarted
+

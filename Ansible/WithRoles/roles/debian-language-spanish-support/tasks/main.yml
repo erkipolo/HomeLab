@@ -1,0 +1,30 @@
+---
+- name: Install spanish language
+  ansible.builtin.apt:
+    name:
+      - task-spanish
+    state: latest
+    update_cache: yes
+
+- name: Ensure spanish language files are available
+  ansible.builtin.locale_gen:
+    name:
+      - es_ES.UTF-8
+    state: present
+
+- name: Enable spanish language short
+  ansible.builtin.lineinfile:
+    dest: /etc/default/locale
+    regexp: "^LANG="
+    line: 'LANG=es_ES.UTF-8'
+
+- name: Enable spanish language large
+  ansible.builtin.lineinfile:
+    dest: /etc/default/locale
+    regexp: "^LANGUAGE="
+    line: 'LANGUAGE="es_ES:es"'
+
+- name: Set timezone
+  ansible.builtin.timezone:
+    name: "America/Havana"
+

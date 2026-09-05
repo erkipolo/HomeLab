@@ -1,0 +1,71 @@
+---
+
+- name: selfhosted configuration
+  tags: selfhosted
+  hosts:
+    - debselfhosted
+  roles:
+    - debian-selfhosted-repositories
+
+- name: debian configuration
+  tags: debian
+  hosts:
+    - debian
+  roles:
+    - debian-repositories-configuration
+    - debian-upgrade-distribution
+    - debian-user-sudo
+    - debian-language-spanish-support
+    - debian-admin-tools
+    - debian-kernel-basic
+
+- name: services
+  tags: services
+  hosts:
+    - server
+  roles:
+    - security-debian-ssh-enable
+    - security-debian-ssh-secure
+    - security-debian-upgrade-unattended-enable
+
+- name: docker io
+  tags: docker
+  hosts:
+    - server
+  roles:
+    - docker-debian-enable
+
+- name: firewall access rules
+  tags: firewall
+  hosts:
+    - server
+  roles:
+    - firewall-debian-iptables-enable
+    - firewall-debian-iptables-ssh
+    - firewall-debian-iptables-policy
+
+- name: hips configuration
+  tags: hips
+  hosts:
+    - server
+  roles:
+    - hips-debian-fail2ban-enable
+    - hips-debian-fail2ban-ssh
+
+- name: service monit
+  tags: monitor
+  hosts:
+    - server
+  roles:
+    - monitor-debian-monit-enable
+
+- name: notification configuration
+  tags: notification
+  hosts:
+    - server
+  roles:
+    - notification-service-email-enable
+    - notification-service-upgrade-unattended
+    - notification-service-hips
+    - notification-service-monit
+

@@ -1,0 +1,9 @@
+---
+- name: Enable DNS supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[named-refused\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban

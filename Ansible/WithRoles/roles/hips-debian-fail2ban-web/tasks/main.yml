@@ -1,0 +1,82 @@
+---
+- name: Enable auth supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[apache-auth\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+
+- name: Enable badbots supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[apache-badbots\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+
+- name: Enable noscript supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[apache-noscript\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+
+- name: Enable overflows supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[apache-overflows\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+
+- name: Enable nohome supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[apache-nohome\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+
+- name: Enable botsearch supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[apache-botsearch\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+
+- name: Enable fakegooglebot supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[apache-fakegooglebot\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+
+- name: Enable modsecurity supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[apache-modsecurity\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+
+- name: Enable shellshock supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[apache-shellshock\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+

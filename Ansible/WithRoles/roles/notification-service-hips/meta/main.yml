@@ -1,0 +1,4 @@
+---
+dependencies:
+  - role: notification-service-email-enable
+  - role: hips-debian-fail2ban-enable

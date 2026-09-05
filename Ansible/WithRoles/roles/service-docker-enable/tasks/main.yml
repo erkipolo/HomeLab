@@ -1,0 +1,7 @@
+---
+- name: Install Docker and Compose
+  ansible.builtin.apt:
+    name:
+      - docker.io
+    state: latest
+    update_cache: yes

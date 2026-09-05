@@ -1,0 +1,135 @@
+---
+- name: Install postfix, ssl-cert and bsd-mailx
+  ansible.builtin.apt:
+    name:
+      - ssl-cert
+      - postfix
+      - bsd-mailx
+    state: latest
+    update_cache: yes
+
+- name: Config aliases
+  ansible.builtin.copy:
+    dest: /etc/aliases
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      postmaster: root
+      webmaster: root
+      root:	{{ EMAIL_NOTIFICATION }}
+  notify: restart_aliases
+
+- name: Setting mail name
+  ansible.builtin.copy:
+    dest: /etc/mailname
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      {{ ansible_fqdn }}
+
+- name: Config domain origin
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^myorigin ="
+    line: 'myorigin = {{ ansible_domain }}'
+  notify: restart_postfix
+
+- name: Config domain name
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^mydomain ="
+    line: 'mydomain = $myorigin'
+  notify: restart_postfix
+
+- name: Config host name
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^myhostname ="
+    line: 'myhostname = {{ ansible_hostname }}'
+  notify: restart_postfix
+
+- name: Config helo name
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^smtp_helo_name ="
+    line: 'smtp_helo_name = $myhostname.$mydomain'
+  notify: restart_postfix
+
+- name: Config destination domains
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^mydestination ="
+    line: 'mydestination = $myhostname.$mydomain, $myhostname.localdomain, localhost.localdomain, localhost, $myhostname'
+  notify: restart_postfix
+
+- name: Config to listen only on localhost
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^inet_interfaces ="
+    line: 'inet_interfaces = loopback-only'
+  notify: restart_postfix
+
+- name: Enable postfix log
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^maillog_file ="
+    line: 'maillog_file = /var/log/mail.log'
+  notify: restart_postfix
+
+- name: Config postfix log rotation
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/postfix
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      /var/log/mail.log {
+        daily
+        dateext
+        dateformat -%Y%m%d-%H%M%S
+        missingok
+        rotate 365
+        compress
+        sharedscripts
+        delaycompress
+        su root root
+        create 640 root root
+        postrotate
+          if [ -d /run/systemd/system ] && command systemctl >/dev/null 2>&1 && systemctl is-active --quiet postlogd.service; then
+            systemctl kill --kill-who main --signal=SIGHUP postlogd.service
+          else
+            invoke-rc.d postfix reload > /dev/null
+          fi
+        endscript
+      }
+
+- name: Fix compatibility level
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^compatibility_level ="
+    line: 'compatibility_level = 3.6'
+  notify: restart_postfix
+
+- name: Secure banner message
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^smtpd_banner ="
+    line: 'smtpd_banner = $myhostname.$mydomain ESMTP'
+  notify: restart_postfix
+
+- name: Setting certificate for TLS client connections
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^smtp_tls_CAfile ="
+    line: 'smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt'
+  notify: restart_postfix
+
+- name: Enable TLS client connections
+  ansible.builtin.lineinfile:
+    dest: /etc/postfix/main.cf
+    regexp: "^smtp_tls_security_level ="
+    line: 'smtp_tls_security_level = encrypt'
+  notify: restart_postfix
+

@@ -1,0 +1,4 @@
+---
+dependencies:
+  - role: notification-service-email-enable
+  - role: monitor-debian-monit-enable

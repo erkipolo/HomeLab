@@ -1,0 +1,11 @@
+zone "mitrans.gob.cu" IN {
+        type primary;
+        file "zone.dir";
+        allow-update { none; };
+};
+zone "127.92.190.in-addr.arpa" IN {
+        type primary;
+        file "zone.inv";
+        allow-update { none; };
+};
+

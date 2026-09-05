@@ -1,0 +1,21 @@
+---
+- name: ACCEPT INPUT HTTP(S) IPv4
+  ansible.builtin.iptables:
+    table: filter
+    chain: INPUT
+    chain_management: true
+    state: present
+    action: append
+    protocol: tcp
+    destination_ports: 80,443
+    source: '{{ item }}'
+    ctstate: NEW
+    jump: ACCEPT
+    comment: 'HTTP(S)'
+    ip_version: ipv4
+  loop:
+    - '{{ WEB_CIDR_1 }}'
+    - '{{ WEB_CIDR_2 }}'
+    - '{{ WEB_CIDR_3 }}'
+  notify: save_rules
+

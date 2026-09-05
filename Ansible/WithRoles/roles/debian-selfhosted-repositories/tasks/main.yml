@@ -1,0 +1,16 @@
+---
+- name: Add debian repositories URL to hosts
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    regexp: '{{ debian_self_hosted_find }}'
+    line: "{{ debian_self_hosted_hosts }}"
+
+- name: Do not check repositories valid date
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      acquire::check-valid-until "0";
+

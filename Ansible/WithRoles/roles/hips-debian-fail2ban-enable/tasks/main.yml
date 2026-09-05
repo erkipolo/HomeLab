@@ -1,0 +1,69 @@
+---
+- name: Install fail2ban
+  ansible.builtin.apt:
+    name:
+      - fail2ban
+    state: latest
+    update_cache: yes
+
+- name: Check if a local config exist
+  ansible.builtin.stat:
+    path: /etc/fail2ban/jail.local
+  register: file_check
+
+- name: Create a local config file
+  ansible.builtin.copy:
+    src: /etc/fail2ban/jail.conf
+    dest: /etc/fail2ban/jail.local
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: file_check.stat.exists == false
+
+- name: Change Ban Time
+  ansible.builtin.lineinfile:
+    dest: /etc/fail2ban/jail.local
+    regexp: "^bantime  = 10m"
+    line: 'bantime  = 10h'
+  notify: restart_fail2ban
+
+- name: Change Max Retry
+  ansible.builtin.lineinfile:
+    dest: /etc/fail2ban/jail.local
+    regexp: "^maxretry = 5"
+    line: 'maxretry = 3'
+  notify: restart_fail2ban
+
+- name: Block for a week for reencident
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[recidive\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban
+
+- name: Setting fail2ban log rotation
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/fail2ban
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      /var/log/fail2ban.log {
+        daily
+        dateext
+        dateformat -%Y%m%d-%H%M%S
+        missingok
+        rotate 365
+        compress
+        sharedscripts
+        delaycompress
+        su root root
+        create 640 root adm
+        postrotate
+          fail2ban-client flushlogs 1>/dev/null
+        endscript
+      }
+

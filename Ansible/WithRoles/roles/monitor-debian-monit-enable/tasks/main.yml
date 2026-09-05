@@ -1,0 +1,62 @@
+---
+- name: Install monit
+  ansible.builtin.apt:
+    name:
+      - monit
+    state: latest
+    update_cache: yes
+
+- name: Check resources each 1 min
+  ansible.builtin.lineinfile:
+    dest: /etc/monit/monitrc
+    regexp: "^set daemon "
+    line: 'set daemon 60'
+  notify: restart_monit
+
+- name: Set log file location
+  ansible.builtin.lineinfile:
+    dest: /etc/monit/monitrc
+    regexp: "^set logfile "
+    line: 'set logfile /var/log/monit.log'
+  notify: restart_monit
+
+- name: Setting monit log rotation
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/monit
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      /var/log/monit.log {
+        daily
+        dateext
+        dateformat -%Y%m%d-%H%M%S
+        missingok
+        rotate 365
+        compress
+        sharedscripts
+        delaycompress
+        su root root
+        create 640 root adm
+        postrotate
+          invoke-rc.d monit reload > /dev/null
+        endscript
+      }
+
+- name: Config how to monitor the resources
+  ansible.builtin.copy:
+    dest: /etc/monit/conf.d/CheckResources
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      check system $HOST
+        if loadavg (1min) per core > 2 for 5 cycles then alert
+        if loadavg (5min) per core > 1.5 for 10 cycles then alert
+        if cpu usage > 95% for 10 cycles then alert
+        if memory usage > 75% then alert
+        if swap usage > 25% then alert
+      check filesystem root with path /
+        if space usage > 70% then alert
+  notify: restart_monit
+

@@ -1,0 +1,37 @@
+---
+- name: Delete obsolete config file
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list
+
+- name: Add debian main repositories
+  ansible.builtin.deb822_repository:
+    name: debian
+    types: deb
+    uris: "http://{{ debian_repositories_main }}/debian"
+    suites:
+      - trixie
+      - trixie-updates
+    components:
+      - main
+      - contrib
+    architectures: amd64
+    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+    state: present
+
+- name: Add debian security repositories
+  ansible.builtin.deb822_repository:
+    name: security
+    types: deb
+    uris: "http://{{ debian_repositories_security }}/debian-security"
+    suites:
+      - trixie-security
+    components:
+      - main
+      - contrib
+    architectures: amd64
+    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+    state: present
+

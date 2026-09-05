@@ -1,0 +1,28 @@
+---
+- name: Setting e-mail notification destination
+  ansible.builtin.lineinfile:
+    dest: /etc/fail2ban/jail.local
+    regexp: "^destemail ="
+    line: "destemail = {{ EMAIL_NOTIFICATION }}"
+  notify: restart_fail2ban
+
+- name: Setting e-mail notification sender
+  ansible.builtin.lineinfile:
+    dest: /etc/fail2ban/jail.local
+    regexp: "^sender ="
+    line: "sender = root@{{ ansible_fqdn }}"
+  notify: restart_fail2ban
+
+- name: Setting MTA
+  ansible.builtin.lineinfile:
+    dest: /etc/fail2ban/jail.local
+    regexp: "^mta = "
+    line: 'mta = mail'
+  notify: restart_fail2ban
+
+- name: Setting notification action to e-mail
+  ansible.builtin.lineinfile:
+    dest: /etc/fail2ban/jail.local
+    regexp: '^action \= \%\(action\_\)s'
+    line: 'action = %(action_mwl)s'
+  notify: restart_fail2ban

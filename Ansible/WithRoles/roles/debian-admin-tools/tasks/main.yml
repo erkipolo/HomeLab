@@ -1,0 +1,17 @@
+---
+- name: remove nano text editor
+  ansible.builtin.apt:
+    name:
+      - nano
+    state: absent
+
+- name: install admin tools
+  ansible.builtin.apt:
+    name:
+      - tmux
+      - lynis
+      - vim-tiny
+      - bash-completion
+    state: latest
+    update_cache: yes
+

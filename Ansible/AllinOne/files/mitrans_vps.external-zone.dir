@@ -1,0 +1,89 @@
+$TTL 86400
+@   IN  SOA     hermes.mitrans.gob.cu. root.mitrans.gob.cu. (
+        2026031001  ;Serial
+        3600        ;Refresh
+        1800        ;Retry
+        604800      ;Expire
+        86400       ;Minimum TTL
+)
+;; Etecsa
+@              IN  NS      hermes.mitrans.gob.cu.
+hermes         IN  A       190.92.127.229
+;; Mitrans
+@              IN  A       190.107.5.228
+www            IN  CNAME   @
+mx1            IN  A       200.55.139.203
+mx2            IN  A       152.206.225.147
+@              IN  MX      10 mx1.mitrans.gob.cu.
+@              IN  MX      11 mx2.mitrans.gob.cu.
+;; Oficina Central
+nc             IN  MX      10 mx1.mitrans.gob.cu.
+nc             IN  MX      20 mx2.mitrans.gob.cu.
+nc             IN  TXT     "v=spf1 a mx a:mx1.mitrans.gob.cu mx:mx1.mitrans.gob.cu ip4:200.55.139.203/32 a mx a:mx2.mitrans.gob.cu mx:mx2.mitrans.gob.cu ip4:152.206.225.147/32 -all"
+;; Onfet
+onfet          IN  A       190.107.13.43
+www.onfet      IN  CNAME   onfet
+onfet          IN  MX      10 mx1.mitrans.gob.cu.
+onfet          IN  MX      20 mx2.mitrans.gob.cu.
+onfet          IN  TXT     "v=spf1 a mx a:mail.mitrans.gob.cu mx:mail.mitrans.gob.cu ip4:200.55.139.203/32 a mx a:mail.mitrans.gob.cu mx:mail.mitrans.gob.cu ip4:152.206.225.147/32 -all"
+;; Atf
+atf            IN  A       190.107.13.43
+www.atf        IN  CNAME   atf
+atf            IN  MX      10 mx1.mitrans.gob.cu.
+atf            IN  MX      20 mx2.mitrans.gob.cu.
+atf            IN  TXT     "v=spf1 a mx a:mail.mitrans.gob.cu mx:mail.mitrans.gob.cu ip4:200.55.139.203/32 a mx a:mail.mitrans.gob.cu mx:mail.mitrans.gob.cu ip4:152.206.225.147/32 -all"
+;; Preger
+preger         IN  A       190.107.13.43
+www.preger     IN  CNAME   preger
+;; Vialidad
+vialidad       IN  A       190.107.13.43
+www.vialidad   IN  CNAME   vialidad
+;; Iacc
+iacc           IN  A       169.158.128.73
+www.iacc       IN  CNAME   iacc
+;; Uet
+uet            IN  A       190.107.13.43
+www.uet        IN  CNAME   uet
+;; Cnsv
+cnsv           IN  A       190.107.13.43
+www.cnsv       IN  CNAME   cnsv
+;; Xinbac
+xinbac         IN  A       190.107.13.40
+www.xinbac     IN  CNAME   xinbac
+;; Amc
+amc            IN  A       190.107.13.43
+www.amc        IN  CNAME   amc
+;; Fitl
+fitl           IN  A       190.107.15.234
+www.fitl       IN  CNAME   fitl
+;; Dviajeros
+dviajeros      IN  MX      10 dviajeros.mitrans.gob.cu.
+dviajeros      IN  A       181.225.233.189
+www.dviajeros  IN  CNAME   dviajeros
+dviajeros      IN  TXT     "v=spf1 a mx a:dviajeros.mitrans.gob.cu mx:dviajeros.mitrans.gob.cu ip4:181.225.233.189/32 -all"
+dviajeros      IN  TXT     "google-site-verification=-lEw-_sUGm3c2PRTEJ26o0dRVtd8rvHTKZOOIKfq5TY"
+_dmarc.dviajeros.mitrans.gob.cu.     IN TXT "v=DMARC1;p=none;adkim=r;aspf=r;sp=reject"
+default._domainkey.dviajeros.mitrans.gob.cu.    IN      TXT     ("v=DKIM1; k=rsa; t=s; s=email; "
+"p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvFLBytFWeQkEBFg7PPCa+jpW1Cb/qAj0WU1BtjTsWrLy7t22nZRiB47zFi3G3nWw90T2frW8MnAhQ0zveh+gYtbZ9+yERRdb+DLoRJuYdVrs14gWdEcRyWIfgfM/MRYRFYESbKjjRty7ELd7eblb4KaiptM1wzvlTPafRhNL0hAKNp+kx3pORhe2NkMe656wi1akdyrwNG4yas"
+"dH5IsVZHQA3gJKnM3xX2djh7MUq9rEIKiqLUgYDuLKzbh+aXmNGEICZ1A1mtdy5XE0JXPNnIMuuvZNL8agFpHp8h75YMlGkPc258sN7eZnrRRis7I8q98F/k/teVRdrnOpkbJIzwIDAQAB")
+;;
+;; let's encrypt
+;;
+_acme-challenge.mitrans.gob.cu.               30      IN      TXT     "74Wp2PILO9nbHlcxiFyiWEHi2pBsypG2RE2SNA_RpY8"
+_acme-challenge.www.mitrans.gob.cu.           30      IN      TXT     "T_Ht_006INyjGlyue75aKOIL43EgvPgT5Duw3PKGvK0"
+_acme-challenge.amc.mitrans.gob.cu.           30      IN      TXT     "Zuz6BdaEDF3K8tkp0JjCF4G58P9RP7F59Yu4Y_3gg9M"
+_acme-challenge.www.amc.mitrans.gob.cu.       30      IN      TXT     "Wgx4wmdP3nmhyeqc1uLatbCsb_3qzHwS4YH4TF1pAdU"
+_acme-challenge.atf.mitrans.gob.cu.           30      IN      TXT     "gekdDAjPyftgRfyF809EG2DlrCS8dH9C1T1eoJ_k70M"
+_acme-challenge.cnsv.mitrans.gob.cu.          30      IN      TXT     "BPpeRUUS6ipqcl-ra2EqDubEQhtfyoc2r1NTFkpnPv0"
+_acme-challenge.fitl.mitrans.gob.cu.          30      IN      TXT     "JzCNRMu_dzADnWsfzXSTV-nMOndPHLuyF8bWwwGJnSk"
+_acme-challenge.onfet.mitrans.gob.cu.         30      IN      TXT     "iiAkgo-GJ9oFg3IyZaWLbSbySHx5bPa-c-n9XtNTfoU"
+_acme-challenge.preger.mitrans.gob.cu.        30      IN      TXT     "JGz7frVgYlhF9xDcthleQnWfOSS7hNGq9VQToiYnA88"
+_acme-challenge.uet.mitrans.gob.cu.           30      IN      TXT     "GUKL_eV1ZavJwETjz00VZ6ErSs9Mezv_3DJ3PCp8uCc"
+_acme-challenge.vialidad.mitrans.gob.cu.      30      IN      TXT     "HqML42xbNbZ5onilRneLH2J_-P4T6FOZ-omgeGyqaYo"
+_acme-challenge.xinbac.mitrans.gob.cu.        30      IN      TXT     "0qeqBV9kiB_QTa_DC-lsBhYga26qpZe8cx--tZR8vTg"
+_acme-challenge.dviajeros.mitrans.gob.cu.     30      IN      TXT     "2nNKNttBx55jo5f17ko9OAztaRLOW5gak5X-H7me-L4"
+_acme-challenge.www.dviajeros.mitrans.gob.cu. 30      IN      TXT     "hDNKGwt0XXmehfSK-7NTWDIzsf7W6MpM9bB_yk215g4"
+_acme-challenge.iacc.mitrans.gob.cu.          30      IN      TXT     "wfwN1PUWLq0Fp9XOESilX0Ga42FXDh37MGxzqEYefV4"
+;;
+;; End of File
+;;

@@ -1,0 +1,131 @@
+all:
+  vars:
+  hosts:
+    testing: # CT with internet
+      ansible_host: 10.245.77.116
+  children:
+    debian:
+      vars:
+        SUDO_USER_NAME: 'admin'
+        SUDO_USER_PASS: '~/.ssh/homelab_sudo_user_pass.txt'
+        SUDO_USER_PUB_KEY: '~/.ssh/homelab_key.pub'
+        SNMP_CONTACT: 'monitor@homelab.cu'
+        SNMP_COMMUNITY: 'homelab'
+        debian_repositories_main:     'deb.debian.org'
+        debian_repositories_security: 'security.debian.org'
+      hosts:
+      children:
+        proxmox:
+          vars:
+            proxmox_repositories:         'download.proxmox.com'
+          hosts:
+        debselfhosted:
+          vars:
+            debian_self_hosted_find:      '^10\.245\.77\.1 deb'
+            debian_self_hosted_hosts:     '10.245.77.1 debian.homelab.cu security.homelab.cu'
+            debian_repositories_main:     'debian.homelab.cu'
+            debian_repositories_security: 'security.homelab.cu'
+          hosts:
+            testing:
+          children:
+            pveselfhosted:
+              vars:
+                proxmox_self_hosted_find:   '^192\.168\.56\.1 pro'
+                proxmox_self_hosted_hosts:  '192.168.56.1 proxmox.homelab.cu'
+                proxmox_repositories:       'proxmox.homelab.cu'
+              hosts:
+        server:
+          vars:
+            EMAIL_NOTIFICATION: 'admin@homelab.cu'
+            SSH_CIDR_1: '0.0.0.0/0'
+            SSH_CIDR_2: '0.0.0.0/0'
+            SSH_CIDR_3: '0.0.0.0/0'
+            SNMP_CIDR_1: '0.0.0.0/0'
+            SNMP_CIDR_2: '0.0.0.0/0'
+            SNMP_CIDR_3: '0.0.0.0/0'
+          hosts:
+            testing:
+          children:
+            docker:
+              vars:
+              hosts:
+            dns:
+              vars:
+                DNS_CIDR_1: '0.0.0.0/0'
+                DNS_CIDR_2: '0.0.0.0/0'
+                DNS_CIDR_3: '0.0.0.0/0'
+              hosts:
+              children:
+                dnsedge:
+                  vars:
+                    named_conf_external_zone:     'named.conf.external-zone'
+                    named_conf_external_zone_dir: 'named.conf.external-zone.dir'
+                    named_conf_external_zone_inv: 'named.conf.external-zone.inv'
+                  hosts:
+            mssql:
+              vars:
+              hosts:
+            mariadb:
+              vars:
+              hosts:
+            web:
+              vars:
+                WEB_CIDR_1: '0.0.0.0/0'
+                WEB_CIDR_2: '0.0.0.0/0'
+                WEB_CIDR_3: '0.0.0.0/0'
+              hosts:
+              children:
+                lightsquid:
+                  vars:
+                    LightSquid_HOST_ALIAS: 'navstat'
+                  hosts:
+                dokuwiki:
+                  vars:
+                    DOKUWIKI_USER: 'admin'
+                    DOKUWIKI_PASS: '~/.ssh/homelab_dokuwiki_user_pass.txt'
+                    DOKUWIKI_HOST_ALIAS: 'dokuwiki'
+                  hosts:
+            lamp_stack:
+              vars:
+                WEB_CIDR_1: '0.0.0.0/0'
+                WEB_CIDR_2: '0.0.0.0/0'
+                WEB_CIDR_3: '0.0.0.0/0'
+              hosts:
+            lamp:
+              vars:
+                WEB_CIDR_1: '0.0.0.0/0'
+                WEB_CIDR_2: '0.0.0.0/0'
+                WEB_CIDR_3: '0.0.0.0/0'
+              hosts:
+              children:
+                drupal:
+                  vars:
+                    DRUPAL_HOST_ALIAS: 'drupal'
+                    DRUPAL_DATABASE_USER: 'drupal'
+                    DRUPAL_DATABASE_PASS: 'drupal'
+                  hosts:
+                drupal_secure:
+                  vars:
+                  hosts:
+                nextcloud:
+                  vars:
+                    NEXTCLOUD_HOST_ALIAS: 'nextcloud'
+                    NEXTCLOUD_ADMIN_USER: 'admin'
+                    NEXTCLOUD_ADMIN_PASS: 'admin'
+                    NEXTCLOUD_DATABASE_USER: 'nextcloud'
+                    NEXTCLOUD_DATABASE_PASS: 'nextcloud'
+                  hosts:
+                wordpress:
+                  vars:
+                    WORDPRESS_HOST_ALIAS: 'wordpress'
+                    WORDPRESS_ADMIN_USER: 'admin'
+                    WORDPRESS_ADMIN_PASS: 'admin'
+                    WORDPRESS_DATABASE_USER: 'wordpress'
+                    WORDPRESS_DATABASE_PASS: 'wordpress'
+                  hosts:
+                zabbix:
+                  vars:
+                    ZABBIX_HOST_ALIAS: 'zabbix'
+                    ZABBIX_DATABASE_USER: 'zabbix'
+                    ZABBIX_DATABASE_PASS: 'zabbix'
+                  hosts:

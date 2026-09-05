@@ -1,0 +1,10 @@
+zone "homelab.cu" IN {
+        type primary;
+        file "zone.dir";
+        allow-update { none; };
+};
+zone "56.168.192.in-addr.arpa" IN {
+        type primary;
+        file "zone.inv";
+        allow-update { none; };
+};

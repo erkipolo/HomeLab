@@ -1,0 +1,9 @@
+---
+- name: Create a proxmox PAM user Administrator
+  ansible.builtin.blockinfile:
+    path: /etc/pve/user.cfg
+    create: yes
+    block: |
+      user:{{ SUDO_USER_NAME}}@pam:1:0::::::
+      group:{{ SUDO_USER_NAME}}:{{ SUDO_USER_NAME}}@pam::
+      acl:1:/:@{{ SUDO_USER_NAME}}:Administrator:

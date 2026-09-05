@@ -1,0 +1,69 @@
+---
+- name: Install iptables
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: latest
+    update_cache: yes
+
+- name: ACCEPT INPUT ESTABLISHED,RELATED
+  ansible.builtin.iptables:
+    table: filter
+    chain: INPUT
+    chain_management: true
+    state: present
+    action: append
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    comment: 'ESTABLISHED,RELATED'
+  notify: save_rules
+
+- name: ACCEPT INPUT loopback
+  ansible.builtin.iptables:
+    table: filter
+    chain: INPUT
+    chain_management: true
+    state: present
+    action: append
+    in_interface: lo
+    jump: ACCEPT
+    comment: 'loopback'
+  notify: save_rules
+
+- name: ACCEPT INPUT PING IPv4
+  ansible.builtin.iptables:
+    table: filter
+    chain: INPUT
+    chain_management: true
+    state: present
+    action: append
+    protocol: icmp
+    jump: ACCEPT
+    comment: 'ICMP'
+    ip_version: ipv4
+  notify: save_rules
+
+- name: ACCEPT FORWARD ESTABLISHED,RELATED
+  ansible.builtin.iptables:
+    table: filter
+    chain: FORWARD
+    chain_management: true
+    state: present
+    action: append
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    comment: 'ESTABLISHED,RELATED'
+  notify: save_rules
+
+- name: ACCEPT FORWARD PING IPv4
+  ansible.builtin.iptables:
+    table: filter
+    chain: FORWARD
+    chain_management: true
+    state: present
+    action: append
+    protocol: icmp
+    jump: ACCEPT
+    comment: 'ICMP'
+    ip_version: ipv4
+  notify: save_rules
+

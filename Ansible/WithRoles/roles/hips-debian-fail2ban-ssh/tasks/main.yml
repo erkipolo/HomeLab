@@ -1,0 +1,9 @@
+---
+- name: Enable SSH supervision
+  ansible.builtin.replace:
+    path: /etc/fail2ban/jail.local
+    regexp: '^(\[sshd\])(?!\n{{data}})'
+    replace: '\1\n{{data}}'
+  vars:
+    data: 'enabled = true'
+  notify: restart_fail2ban

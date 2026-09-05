@@ -1,0 +1,23 @@
+---
+- name: ACCEPT INPUT LIMIT SSH IPv4
+  ansible.builtin.iptables:
+    table: filter
+    chain: INPUT
+    chain_management: true
+    state: present
+    action: append
+    protocol: tcp
+    destination_port: 22
+    source: '{{ item }}'
+    ctstate: NEW
+    syn: match
+    limit: 2/second
+    limit_burst: 20
+    jump: ACCEPT
+    comment: 'SSH'
+    ip_version: ipv4
+  loop:
+    - '{{ SSH_CIDR_1 }}'
+    - '{{ SSH_CIDR_2 }}'
+    - '{{ SSH_CIDR_3 }}'
+  notify: save_rules

@@ -1,0 +1,7 @@
+---
+- name: Install OpenSSH
+  ansible.builtin.apt:
+    name:
+      - openssh-server
+    state: latest
+    update_cache: yes

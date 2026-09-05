@@ -1,0 +1,34 @@
+---
+- name: Delete enterprise proxmox config file
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/pve-enterprise.sources
+
+- name: Add proxmox main repositories
+  ansible.builtin.deb822_repository:
+    name: proxmox
+    types: deb
+    uris: "http://{{ proxmox_repositories }}/debian/pve"
+    suites:
+      - trixie
+    components:
+      - pve-no-subscription
+    architectures: amd64
+    signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+    state: present
+
+- name: Add proxmox ceph repositories
+  ansible.builtin.deb822_repository:
+    name: ceph
+    types: deb
+    uris: "http://{{ proxmox_repositories }}/debian/ceph-squid"
+    suites:
+      - trixie
+    components:
+      - no-subscription
+    architectures: amd64
+    signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+    state: present
+
