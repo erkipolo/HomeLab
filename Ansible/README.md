@@ -3,6 +3,23 @@
 2. `ansible-playbook -l 'pve,ct00,ct01' -t 'repositories,upgrade,sudo-user' stage.yml`
 3. `ansible-playbook stage.yml`
 
+## **Habilitar autenticación en el servidor de envio de e-mail (Requiere Habilitar Notificaciones via e-mail usando postfix [Opcional])**
+### Necesitamos generar una contraseña para acceder al servidor SMTP de nuestra cuenta de Gmail.
+1.- Accedemos al siguiente enlace: [google app passwords|https://security.google.com/settings/security/apppasswords]
+2.- En la opción seleccionar aplicación: Correo.
+3.- En la opción seleccionar dispositivo: Otra, añadimos el nombre que queramos, por ejemplo Postfix.
+4.- Guardamos en un lugar seguro la contraseña generada, esta nos permitirá autenticarnos con Postfix en los servidores SMTP de google.
+### Instalar paquete requerido
+`apt install postfix`
+### Crear archivo de contraseñas
+`editor /etc/postfix/sasl/sasl_passwd`
+### Con el contenido (ejemplo)
+`[smtp.gmail.com]:587 erkipolo@gmail.com:diiflrfqllahsgdt`
+### Cree el archivo de base de datos ha copiar al servidor
+`postmap sasl_passwd`
+### Copiar dentro de la carpeta "files" que se encuentra dentro del rol
+`cp -v sasl_passwd.db roles/sendonly-postfix-auth/files/`
+
 ## **Execution Order**
 ### **Basic**
 1. **kernel:**`setting kernel security configuration`
