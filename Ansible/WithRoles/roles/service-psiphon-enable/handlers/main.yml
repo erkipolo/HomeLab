@@ -1,0 +1,8 @@
+- name: restart_psiphond
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: psiphond.service
+    masked: no
+    enabled: yes
+    state: restarted
+

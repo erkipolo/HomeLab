@@ -32,3 +32,20 @@
     state: absent
   when: file_check.stat.exists == false
 
+- name: Creating Psiphon for Linux Service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/psiphond.service
+    owner: root
+    group: root
+    mode: '0755'
+    content: |
+      [Unit]
+      After=network.target
+      [Service]
+      ExecStart=/usr/bin/psiphon run
+      Type=simple
+      WorkingDirectory=/root
+      [Install]
+      WantedBy=default.target
+    notify: restart_psiphond
+
