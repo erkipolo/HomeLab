@@ -1,0 +1,23 @@
+---
+dependencies:
+  - role: debian-repositories-configuration
+  - role: debian-upgrade-distribution
+  - role: debian-user-sudo
+  - role: debian-language-spanish-support
+  - role: debian-admin-tools
+  - role: debian-kernel-basic
+  - role: security-debian-ssh-enable
+  - role: security-debian-ssh-secure
+  - role: security-debian-upgrade-unattended-enable
+  - role: firewall-debian-iptables-enable
+  - role: firewall-debian-iptables-ssh
+  - role: firewall-debian-iptables-policy
+  - role: hips-debian-fail2ban-enable
+  - role: hips-debian-fail2ban-ssh
+  - role: monitor-debian-monit-enable
+  - role: notification-service-email-enable
+  - role: notification-service-email-auth
+  - role: notification-service-upgrade-unattended
+  - role: notification-service-hips
+  - role: notification-service-monit
+
