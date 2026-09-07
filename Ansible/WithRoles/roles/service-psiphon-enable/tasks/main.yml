@@ -1,0 +1,34 @@
+---
+- name: Check if Psiphon for Linux are installed
+  ansible.builtin.stat:
+    path: /usr/bin/psiphon
+  register: file_check
+
+- name: Install wget
+  ansible.builtin.apt:
+    name:
+      - wget
+    state: latest
+    update_cache: yes
+  when: file_check.stat.exists == false
+
+- name: Download Psiphon for Linux archive
+  get_url:
+    url: "https://raw.githubusercontent.com/SpherionOS/PsiphonLinux/main/plinstaller2"
+    dest: "/tmp/plinstaller2"
+    owner: "root"
+    group: "root"
+    mode: '0755'
+  when: file_check.stat.exists == false
+
+- name: Installing Psiphon for Linux
+  ansible.builtin.shell: |
+    sh /tmp/plinstaller2
+  when: file_check.stat.exists == false
+
+- name: Delete obsolete config file
+  ansible.builtin.file:
+    path: /tmp/plinstaller2
+    state: absent
+  when: file_check.stat.exists == false
+

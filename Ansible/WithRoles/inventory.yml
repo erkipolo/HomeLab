@@ -21,6 +21,9 @@ all:
             debian_repositories_security: 'security.homelab.cu'
           hosts:
             testing:
+        psiphon:
+          hosts:
+            testing:
         server:
           vars:
             FQDN_EMAIL_SERVER: 'smtp.gmail.com'

@@ -14,9 +14,17 @@
   roles:
     - debian-base-system
 
+- name: debian service psiphon
+  tags: psiphon
+  hosts:
+    - psiphon
+  roles:
+    - service-psiphon-enable
+
 - name: debian service docker.io and compose
   tags: docker
   hosts:
     - docker
   roles:
     - docker-debian-enable
+
