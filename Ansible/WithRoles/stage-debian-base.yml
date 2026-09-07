@@ -14,9 +14,9 @@
   roles:
     - debian-base-system
 
-- name: docker io and compose
+- name: debian service docker.io and compose
   tags: docker
   hosts:
-    - server
+    - docker
   roles:
     - docker-debian-enable
