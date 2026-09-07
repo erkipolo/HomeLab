@@ -14,7 +14,7 @@
     mode: '0644'
     content: |
       sysLocation   {{ ansible_fqdn }}
-      sysContact    {{ SNMP_CONTACT }}
+      sysContact    {{ EMAIL_NOTIFICATION }}
       sysServices   72
       agentaddress  udp:0.0.0.0:161,udp6:[::]:161
       view          all included .1

@@ -10,7 +10,7 @@
   ansible.builtin.lineinfile:
     dest: /etc/fail2ban/jail.local
     regexp: "^sender ="
-    line: "sender = root@{{ ansible_fqdn }}"
+    line: "sender = fail2ban@{{ ansible_fqdn }}"
   notify: restart_fail2ban
 
 - name: Setting MTA
