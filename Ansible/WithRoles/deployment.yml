@@ -14,17 +14,24 @@
   roles:
     - debian-base-system
 
-- name: debian service psiphon
-  tags: psiphon
+- name: debian service gitea
+  tags: gitea
   hosts:
-    - psiphon
+    - gitea
   roles:
-    - service-psiphon-enable
+    - service-gitea-enable
+
+- name: debian service gitea
+  tags: giteacuba
+  hosts:
+    - giteacuba
+  roles:
+    - service-gitea-enable-with-proxy
 
 - name: debian service docker.io and compose
   tags: docker
   hosts:
     - docker
   roles:
-    - docker-debian-enable
+    - service-docker-enable
 

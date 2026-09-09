@@ -21,18 +21,36 @@ all:
             debian_repositories_security: 'security.homelab.cu'
           hosts:
             testing:
-        psiphon:
-          hosts:
-            testing:
         server:
           vars:
             FQDN_EMAIL_SERVER: 'smtp.gmail.com'
-            EMAIL_NOTIFICATION: 'erkipolo@gmail.com'
+            EMAIL_NOTIFICATION: 'admin@homelab.cu'
             SSH_CIDR_1: '0.0.0.0/0'
             SSH_CIDR_2: '0.0.0.0/0'
             SSH_CIDR_3: '0.0.0.0/0'
           hosts:
           children:
+            psiphon:
+              hosts:
+              children:
+                giteacuba:
+                  vars:
+                    proxy_env:
+                      socks_proxy: http://127.0.0.1:1081/
+                      https_proxy: http://127.0.0.1:8081/
+                      http_proxy: http://127.0.0.1:8081/
+                      ftp_proxy: http://127.0.0.1:8081/
+                      no_proxy: 127.0.0.1,homelab.cu
+                      SOCKS_PROXY: http://127.0.0.1:1081/
+                      HTTPS_PROXY: http://127.0.0.1:8081/
+                      HTTP_PROXY: http://127.0.0.1:8081/
+                      FTP_PROXY: http://127.0.0.1:8081/
+                      NO_PROXY: 127.0.0.1,homelab.cu
+                  hosts:
+                    testing:
+            gitea:
+              vars:
+              hosts:
             docker:
               vars:
               hosts:
