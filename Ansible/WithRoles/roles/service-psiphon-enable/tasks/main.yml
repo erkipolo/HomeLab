@@ -30,7 +30,6 @@
   ansible.builtin.file:
     path: /tmp/plinstaller2
     state: absent
-  when: file_check.stat.exists == false
 
 - name: Creating Psiphon for Linux Service
   ansible.builtin.copy:
@@ -47,5 +46,10 @@
       WorkingDirectory=/root
       [Install]
       WantedBy=default.target
-    notify: restart_psiphond
 
+- name: Start Psiphond
+  ansible.builtin.systemd_service:
+    name: psiphond.service
+    masked: no
+    enabled: true
+    state: started
