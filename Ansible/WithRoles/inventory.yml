@@ -2,7 +2,7 @@ all:
   vars:
   hosts:
     testing: # CT with internet
-      ansible_host: 10.245.77.116
+      ansible_host: 10.245.77.48
   children:
     debian:
       vars:
@@ -46,12 +46,21 @@ all:
                       HTTP_PROXY: http://127.0.0.1:8081/
                       FTP_PROXY: http://127.0.0.1:8081/
                       NO_PROXY: 127.0.0.1,homelab.cu
+                    GITEA_CIDR_1: '0.0.0.0/0'
+                    GITEA_CIDR_2: '0.0.0.0/0'
+                    GITEA_CIDR_3: '0.0.0.0/0'
+                    GITEA_DATABASE_USER: 'gitea'
+                    GITEA_DATABASE_PASS: 'gitea'
                   hosts:
                     testing:
             gitea:
               vars:
+                GITEA_CIDR_1: '0.0.0.0/0'
+                GITEA_CIDR_2: '0.0.0.0/0'
+                GITEA_CIDR_3: '0.0.0.0/0'
+                GITEA_DATABASE_USER: 'gitea'
+                GITEA_DATABASE_PASS: 'gitea'
               hosts:
             docker:
               vars:
               hosts:
-                testing:
