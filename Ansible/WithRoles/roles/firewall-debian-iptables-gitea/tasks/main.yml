@@ -1,0 +1,20 @@
+---
+- name: ACCEPT INPUT GITEA IPv4
+  ansible.builtin.iptables:
+    table: filter
+    chain: INPUT
+    chain_management: true
+    state: present
+    action: append
+    protocol: tcp
+    destination_port: 3000
+    source: '{{ item }}'
+    ctstate: NEW
+    jump: ACCEPT
+    comment: 'GITEA'
+    ip_version: ipv4
+  loop:
+    - '{{ GITEA_CIDR_1 }}'
+    - '{{ GITEA_CIDR_2 }}'
+    - '{{ GITEA_CIDR_3 }}'
+  notify: save_rules
