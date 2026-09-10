@@ -20,6 +20,7 @@
     - gitea
   roles:
     - service-gitea-enable
+    - firewall-debian-iptables-gitea
 
 - name: debian service gitea
   tags: giteacuba
@@ -27,6 +28,7 @@
     - giteacuba
   roles:
     - service-gitea-enable-with-proxy
+    - firewall-debian-iptables-gitea
 
 - name: debian service docker.io and compose
   tags: docker
