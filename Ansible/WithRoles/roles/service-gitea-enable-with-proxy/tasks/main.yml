@@ -1,4 +1,30 @@
 ---
+#- name: Create a new database with name 'Gitea'
+#  ansible.mysql.mysql_db:
+#    name: gitea
+#    state: present
+#    login_unix_socket: /run/mysqld/mysqld.sock
+
+- name: Create Gitea mariadb
+  ansible.builtin.mysql_db:
+    name: "gitea"
+    state: present
+
+- name: Create Gitea user for Gitea mariadb
+  ansible.builtin.mysql_user:
+    name: "{{ GITEA_DATABASE_USER }}"
+    password: '{{ GITEA_DATABASE_PASS }}'
+    priv: "gitea.*:ALL"
+    host: 'localhost'
+    state: present
+
+- name: Start Psiphond
+  ansible.builtin.systemd_service:
+    name: psiphond.service
+    masked: no
+    enabled: true
+    state: started
+
 - name: Check if Gitea Keyring archive are downloaded
   ansible.builtin.stat:
     path: /etc/apt/trusted.gpg.d/morph027-gitea.asc
@@ -15,7 +41,7 @@
   environment: "{{ proxy_env }}"
   when: file_check.stat.exists == false
 
-- name: Add debian main repositories
+- name: Add gitea repositories
   ansible.builtin.deb822_repository:
     name: morph027-gitea
     types: deb
@@ -27,6 +53,12 @@
     architectures: amd64
     signed_by: /etc/apt/trusted.gpg.d/morph027-gitea.asc
     state: present
+
+- name: Add gitea repository proxy
+  ansible.builtin.lineinfile:
+    dest: /etc/apt/apt.conf
+    regexp: '^acquire\:\:https\:\:proxy\:\:packaging\.gitlab\.io'
+    line: 'acquire::https::proxy::packaging.gitlab.io    "http://127.0.0.1:8081/";'
 
 - name: Install gitea
   ansible.builtin.apt:
@@ -43,12 +75,6 @@
     masked: no
     enabled: true
     state: started
-
-- name: Add gitea repository proxy
-  ansible.builtin.lineinfile:
-    dest: /etc/apt/apt.conf
-    regexp: '^acquire\:\:https\:\:proxy\:\:packaging\.gitlab\.io'
-    line: 'acquire::https::proxy::packaging.gitlab.io    "http://127.0.0.1:8081/";'
 
 - name: Check if Gitea Keyring archive are downloaded
   ansible.builtin.stat:
