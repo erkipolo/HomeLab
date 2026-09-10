@@ -1,0 +1,83 @@
+---
+- name: Install MariaDB
+  ansible.builtin.apt:
+    name:
+      - mariadb-server
+    state: latest
+    update_cache: yes
+
+- name: Install Ansible support for MariaDB
+  ansible.builtin.apt:
+    name:
+      - python3-mysqldb
+    state: latest
+    update_cache: yes
+
+- name: Removes anonymous user account for localhost
+  ansible.builtin.mysql_user:
+    name: ''
+    host: localhost
+    state: absent
+    login_unix_socket: /run/mysqld/mysqld.sock
+
+- name: Creating the log directory
+  ansible.builtin.file:
+    path: /var/log/mysql
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'
+
+- name: Setting general log file
+  ansible.builtin.lineinfile:
+    dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+    regexp: "^#general_log_file"
+    line: 'general_log_file       = /var/log/mysql/mysql.log'
+  notify: restart_mariadb
+
+- name: Enable general log file
+  ansible.builtin.lineinfile:
+    dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+    regexp: "^#general_log  "
+    line: 'general_log            = 1'
+  notify: restart_mariadb
+
+- name: Setting log error file
+  ansible.builtin.lineinfile:
+    dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+    regexp: "^#log_error ="
+    line: 'log_error = /var/log/mysql/error.log'
+  notify: restart_mariadb
+
+- name: Config mariadb log rotation
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/mariadb
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      /var/lib/mysql/mysqld.log /var/lib/mysql/mariadb.log /var/log/mysql/*.log {
+        daily
+        dateext
+        dateformat -%Y%m%d-%H%M%S
+        missingok
+        rotate 365
+        compress
+        sharedscripts
+        delaycompress
+        su mysql mysql
+        create 640 mysql mysql
+        postrotate
+          if test -r /etc/mysql/debian.cnf
+          then
+            EXTRAPARAM='--defaults-file=/etc/mysql/debian.cnf'
+          fi
+
+          if test -x /usr/bin/mariadb-admin
+          then
+            /usr/bin/mariadb-admin $EXTRAPARAM --local flush-error-log \
+              flush-engine-log flush-general-log flush-slow-log
+          fi
+        endscript
+      }
+
