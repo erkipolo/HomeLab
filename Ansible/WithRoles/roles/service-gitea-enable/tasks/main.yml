@@ -1,4 +1,17 @@
 ---
+- name: Create Gitea mariadb
+  ansible.builtin.mysql_db:
+    name: "gitea"
+    state: present
+
+- name: Create Gitea user for Gitea mariadb
+  ansible.builtin.mysql_user:
+    name: "{{ GITEA_DATABASE_USER }}"
+    password: '{{ GITEA_DATABASE_PASS }}'
+    priv: "gitea.*:ALL"
+    host: 'localhost'
+    state: present
+
 - name: Check if Gitea Keyring archive are downloaded
   ansible.builtin.stat:
     path: /etc/apt/trusted.gpg.d/morph027-gitea.asc
@@ -11,7 +24,6 @@
     owner: "root"
     group: "root"
     mode: '0755'
-    use_proxy: yes
   when: file_check.stat.exists == false
 
 - name: Add debian main repositories
