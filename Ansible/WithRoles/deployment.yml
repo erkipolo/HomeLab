@@ -14,6 +14,13 @@
   roles:
     - debian-base-system
 
+- name: debian service psiphon
+  tags: psiphon
+  hosts:
+    - psiphon
+  roles:
+    - service-psiphon-enable
+
 - name: debian service gitea
   tags: gitea
   hosts:
@@ -22,10 +29,10 @@
     - service-gitea-enable
     - firewall-debian-iptables-gitea
 
-- name: debian service gitea
-  tags: giteacuba
+- name: debian service gitea with proxy
+  tags: gitea_with_proxy
   hosts:
-    - giteacuba
+    - gitea_with_proxy
   roles:
     - service-gitea-enable-with-proxy
     - firewall-debian-iptables-gitea
@@ -36,4 +43,3 @@
     - docker
   roles:
     - service-docker-enable
-

@@ -32,8 +32,9 @@ all:
           children:
             psiphon:
               hosts:
+                testing:
               children:
-                giteacuba:
+                gitea_with_proxy:
                   vars:
                     proxy_env:
                       socks_proxy: http://127.0.0.1:1081/
@@ -64,3 +65,5 @@ all:
             docker:
               vars:
               hosts:
+                testing:
+
